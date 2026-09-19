@@ -2,173 +2,203 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RetroCloud Final</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>RetroCloud</title>
     
-    <!-- Скрипт для работы на GitHub Pages -->
+    <!-- Авто-исправление для GitHub Pages (убирает черный экран) -->
     <script src="https://cdn.jsdelivr.net/gh/gzuidhof/coi-serviceworker@latest/coi-serviceworker.min.js"></script>
     
     <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
     <script src="https://unpkg.com/nostalgist/dist/nostalgist.umd.js"></script>
 
     <style>
-        :root { --accent: #00f2ff; --bg: #000; --card: #111; }
-        body { margin: 0; background: var(--bg); color: #eee; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; height: 100vh; }
-        
-        header { padding: 15px; background: #111; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
-        
-        .screen { display: none; height: calc(100vh - 70px); overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        :root { --accent: #00e5ff; --bg: #000; --card: #151515; }
+        * { -webkit-tap-highlight-color: transparent; outline: none; }
+        body { 
+            margin: 0; background: var(--bg); color: #fff; 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            overflow: hidden; height: 100vh; display: flex; flex-direction: column;
+        }
+
+        /* Навигация */
+        header { 
+            height: 60px; background: #111; display: flex; 
+            align-items: center; padding: 0 20px; border-bottom: 2px solid var(--accent);
+            justify-content: space-between; flex-shrink: 0;
+        }
+        .btn-back { background: #333; border: none; color: #fff; padding: 8px 15px; border-radius: 6px; cursor: pointer; display: none; }
+        .logo { font-weight: 800; color: var(--accent); letter-spacing: 1px; }
+
+        /* Экраны */
+        .screen { flex-grow: 1; overflow-y: auto; padding: 20px; display: none; box-sizing: border-box; }
         .active { display: block; }
 
-        /* Меню консолей */
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; }
-        .card { background: var(--card); border: 1px solid #333; border-radius: 15px; padding: 25px 10px; text-align: center; cursor: pointer; transition: 0.2s; }
-        .card:hover { border-color: var(--accent); transform: scale(1.03); }
-        .card b { display: block; margin-top: 10px; font-size: 14px; }
+        /* Консоли */
+        .c-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; }
+        .c-item { 
+            background: var(--card); border: 1px solid #222; border-radius: 12px; 
+            padding: 30px 10px; text-align: center; cursor: pointer; transition: 0.2s;
+        }
+        .c-item:hover { border-color: var(--accent); transform: translateY(-3px); }
+        .c-item b { display: block; margin-top: 10px; font-size: 14px; text-transform: uppercase; }
 
-        /* Список игр */
-        .g-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; }
+        /* Игры */
+        .g-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px; }
         .g-card { background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; text-align: center; cursor: pointer; }
-        .g-card img { width: 100%; aspect-ratio: 1; object-fit: cover; }
-        .g-card span { display: block; padding: 5px; font-size: 10px; height: 25px; overflow: hidden; }
+        .g-card img { width: 100%; aspect-ratio: 1; object-fit: cover; background: #222; }
+        .g-card div { padding: 8px; font-size: 11px; height: 32px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 
         /* Эмулятор */
-        #emu-layer { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; }
-        #canvas-box { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-        canvas { max-width: 100%; max-height: 100%; }
+        #emu-view { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; }
+        .quit-btn { position: absolute; top: 15px; right: 15px; z-index: 10001; background: #f44336; border: none; color: #fff; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
 
-        .btn-exit { position: absolute; top: 10px; right: 10px; background: #ff4444; color: white; border: none; padding: 12px 20px; border-radius: 5px; z-index: 10001; font-weight: bold; cursor: pointer; }
-        
-        .controls { position: absolute; bottom: 20px; left: 0; width: 100%; display: none; justify-content: space-between; padding: 0 20px; box-sizing: border-box; pointer-events: none; z-index: 10000; }
-        .t-btn { width: 60px; height: 60px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; pointer-events: auto; backdrop-filter: blur(5px); -webkit-user-select: none; }
-        .t-btn:active { background: var(--accent); }
+        /* Тач-управление */
+        .touch-ui { 
+            position: absolute; bottom: 30px; left: 0; width: 100%; 
+            display: none; justify-content: space-between; padding: 0 25px; 
+            box-sizing: border-box; pointer-events: none; z-index: 10000;
+        }
+        .joy-btn { 
+            width: 65px; height: 65px; background: rgba(255,255,255,0.1); 
+            border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            color: #fff; pointer-events: auto; backdrop-filter: blur(5px);
+        }
+        .joy-btn:active { background: var(--accent); color: #000; transform: scale(0.9); }
 
-        .add-btn { position: fixed; bottom: 25px; right: 25px; background: var(--accent); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(0,242,255,0.5); z-index: 100; }
-        
-        /* Сообщение о перезагрузке */
-        #reload-msg { position: fixed; top: 0; left: 0; width: 100%; background: var(--accent); color: #000; padding: 10px; text-align: center; font-weight: bold; z-index: 20000; display: none; }
+        /* Кнопка Добавить */
+        .add-btn { 
+            position: fixed; bottom: 30px; right: 30px; background: var(--accent); 
+            width: 65px; height: 65px; border-radius: 50%; display: flex; 
+            align-items: center; justify-content: center; color: #000; 
+            font-size: 35px; cursor: pointer; box-shadow: 0 5px 20px rgba(0,229,255,0.4);
+        }
     </style>
 </head>
 <body>
 
-    <div id="reload-msg">Настройка завершена! Пожалуйста, ОБНОВИТЕ СТРАНИЦУ (F5), чтобы игры запускались.</div>
+<header>
+    <button class="btn-back" id="btnBack" onclick="goHome()">← НАЗАД</button>
+    <div class="logo">RETRO CLOUD</div>
+    <div id="stat" style="font-size: 10px; color: var(--accent)">● READY</div>
+</header>
 
-    <header>
-        <div class="logo" onclick="location.reload()">RetroCloud</div>
-        <div id="info" style="font-size: 10px; color: var(--accent)">System OK</div>
-    </header>
+<!-- Экран 1: Приставки -->
+<div id="scrHome" class="screen active">
+    <div class="c-grid">
+        <div class="c-item" onclick="openConsole('nes')">🎮<b>NES</b></div>
+        <div class="c-item" onclick="openConsole('snes')">🕹️<b>SNES</b></div>
+        <div class="c-item" onclick="openConsole('gba')">📟<b>GBA</b></div>
+        <div class="c-item" onclick="openConsole('sega')">🦔<b>SEGA</b></div>
+        <div class="c-item" onclick="openConsole('ps1')">💿<b>PS1</b></div>
+        <div class="c-item" onclick="openConsole('n64')">🧊<b>N64</b></div>
+        <div class="c-item" onclick="openConsole('gbc')">🌈<b>GBC</b></div>
+        <div class="c-item" onclick="openConsole('gb')">⚪<b>GB</b></div>
+    </div>
+</div>
 
-    <div id="main" class="screen active">
-        <div class="grid">
-            <div class="card" onclick="go('nes')">🎮<b>NES</b></div>
-            <div class="card" onclick="go('snes')">🕹️<b>SNES</b></div>
-            <div class="card" onclick="go('gba')">📟<b>GBA</b></div>
-            <div class="card" onclick="go('sega')">🦔<b>SEGA</b></div>
-            <div class="card" onclick="go('ps1')">💿<b>PS1</b></div>
-            <div class="card" onclick="go('n64')">🧊<b>N64</b></div>
-            <div class="card" onclick="go('gbc')">🌈<b>GBC</b></div>
+<!-- Экран 2: Список игр -->
+<div id="scrLib" class="screen">
+    <div class="g-grid" id="gameGrid"></div>
+    <div class="add-btn" onclick="document.getElementById('fileIn').click()">+</div>
+</div>
+
+<!-- Экран 3: Эмулятор -->
+<div id="emu-view">
+    <button class="quit-btn" onclick="location.reload()">ВЫЙТИ</button>
+    <div id="emu-container" style="width:100%; height:100%"></div>
+    
+    <div id="touchUI" class="touch-ui">
+        <div style="display:grid; grid-template-columns:repeat(3, 65px); gap:5px">
+            <div></div><div class="joy-btn" id="up">↑</div><div></div>
+            <div class="joy-btn" id="left">←</div><div></div><div class="joy-btn" id="right">→</div>
+            <div></div><div class="joy-btn" id="down">↓</div><div></div>
+        </div>
+        <div style="display:flex; gap:15px; align-items:flex-end">
+            <div class="joy-btn" id="start" style="width:50px; height:50px; font-size:10px">START</div>
+            <div class="joy-btn" id="b" style="background:rgba(255,0,0,0.2)">B</div>
+            <div class="joy-btn" id="a" style="background:rgba(0,255,0,0.2)">A</div>
         </div>
     </div>
+</div>
 
-    <div id="lib" class="screen">
-        <div class="g-grid" id="g-list"></div>
-        <div class="add-btn" onclick="document.getElementById('f').click()">+</div>
-    </div>
-
-    <div id="emu-layer">
-        <button class="btn-exit" onclick="quit()">ВЫХОД</button>
-        <div id="canvas-box"></div>
-        
-        <div id="touch" class="controls">
-            <div style="display:grid; grid-template-columns:repeat(3,55px); gap:5px">
-                <div></div><div class="t-btn" id="up">↑</div><div></div>
-                <div class="t-btn" id="left">←</div><div></div><div class="t-btn" id="right">→</div>
-                <div></div><div class="t-btn" id="down">↓</div><div></div>
-            </div>
-            <div style="display:flex; gap:15px; align-items:flex-end">
-                <div class="t-btn" id="start" style="width:45px; height:45px; font-size:10px">START</div>
-                <div class="t-btn" id="b" style="background:rgba(255,0,0,0.3)">B</div>
-                <div class="t-btn" id="a" style="background:rgba(0,255,0,0.3)">A</div>
-            </div>
-        </div>
-    </div>
-
-    <input type="file" id="f" hidden onchange="save(event)">
+<input type="file" id="fileIn" hidden onchange="uploadGame(event)">
 
 <script>
-    // Проверка изоляции для GitHub Pages
-    if (!window.crossOriginIsolated && window.location.hostname !== 'localhost') {
-        setTimeout(() => {
-            if (!window.crossOriginIsolated) document.getElementById('reload-msg').style.display = 'block';
-        }, 2000);
-    }
-
     const db = new Dexie("GameDB");
-    db.version(1).stores({ games: '++id, type, name, data, cover' });
+    db.version(1).stores({ games: '++id, plat, name, data, cover' });
 
-    let cur = '';
-    let nst = null;
+    let activePlat = '';
+    let emu = null;
 
-    function go(t) {
-        cur = t;
-        document.getElementById('main').classList.remove('active');
-        document.getElementById('lib').classList.add('active');
-        show();
+    // Навигация
+    function openConsole(p) {
+        activePlat = p;
+        document.getElementById('scrHome').classList.remove('active');
+        document.getElementById('scrLib').classList.add('active');
+        document.getElementById('btnBack').style.display = 'block';
+        drawGames();
     }
 
-    async function show() {
-        const list = document.getElementById('g-list');
-        list.innerHTML = '';
-        const items = await db.games.where('type').equals(cur).toArray();
-        items.forEach(i => {
-            const d = document.createElement('div');
-            d.className = 'g-card';
-            d.onclick = () => play(i);
-            d.innerHTML = `<img src="${i.cover}" onerror="this.src='https://via.placeholder.com/100?text=GAME'"><span>${i.name}</span>`;
-            list.appendChild(d);
+    function goHome() {
+        document.getElementById('scrLib').classList.remove('active');
+        document.getElementById('scrHome').classList.add('active');
+        document.getElementById('btnBack').style.display = 'none';
+    }
+
+    // Отрисовка
+    async function drawGames() {
+        const grid = document.getElementById('gameGrid');
+        grid.innerHTML = '';
+        const games = await db.games.where('plat').equals(activePlat).toArray();
+        games.forEach(g => {
+            const el = document.createElement('div');
+            el.className = 'g-card';
+            el.onclick = () => run(g);
+            el.innerHTML = `<img src="${g.cover}" onerror="this.src='https://via.placeholder.com/150/151515/00e5ff?text=${g.plat}'"><div>${g.name}</div>`;
+            grid.appendChild(el);
         });
     }
 
-    async function save(e) {
+    // Загрузка
+    async function uploadGame(e) {
         const f = e.target.files[0];
-        if(!f) return;
+        if (!f) return;
         const name = f.name.replace(/\.[^/.]+$/, "");
         const buf = await f.arrayBuffer();
-        const ps = { nes:'Nintendo_-_Nintendo_Entertainment_System', snes:'Nintendo_-_Super_Nintendo_Entertainment_System', gba:'Nintendo_-_Game_Boy_Advance', gbc:'Nintendo_-_Game_Boy_Color', sega:'Sega_-_Mega_Drive_-_Genesis', ps1:'Sony_-_PlayStation', n64:'Nintendo_-_Nintendo_64' };
-        const cover = `https://raw.githubusercontent.com/libretro/libretro-thumbnails/master/${ps[cur]}/Named_Boxarts/${encodeURIComponent(name)}.png`;
-        await db.games.add({ type: cur, name, data: buf, cover });
-        show();
+        const ps = { nes:'Nintendo_-_Nintendo_Entertainment_System', snes:'Nintendo_-_Super_Nintendo_Entertainment_System', gba:'Nintendo_-_Game_Boy_Advance', gbc:'Nintendo_-_Game_Boy_Color', sega:'Sega_-_Mega_Drive_-_Genesis', ps1:'Sony_-_PlayStation', n64:'Nintendo_-_Nintendo_64', gb:'Nintendo_-_Game_Boy' };
+        const cover = `https://raw.githubusercontent.com/libretro/libretro-thumbnails/master/${ps[activePlat]}/Named_Boxarts/${encodeURIComponent(name)}.png`;
+        await db.games.add({ plat: activePlat, name, data: buf, cover });
+        drawGames();
     }
 
-    async function play(g) {
-        document.getElementById('emu-layer').style.display = 'block';
-        const cs = { nes:'fceumm', snes:'snes9x', gba:'mgba', gbc:'gambatte', sega:'genesis_plus_gx', ps1:'pcsx_rearmed', n64:'mupen64plus_next' };
+    // Запуск (Без ручного F5)
+    async function run(game) {
+        document.getElementById('emu-view').style.display = 'block';
+        const cores = { nes:'fceumm', snes:'snes9x', gba:'mgba', gbc:'gambatte', gb:'gambatte', sega:'genesis_plus_gx', ps1:'pcsx_rearmed', n64:'mupen64plus_next' };
 
         try {
-            // Настройка Nostalgist
-            nst = await nostalgist.Nostalgist.launch({
-                core: cs[g.type],
-                rom: new Blob([g.data]),
-                element: document.querySelector('#canvas-box'),
-                keyBindings: [{ b:'z', a:'x', start:'enter', select:'shift', up:'arrowup', down:'arrowdown', left:'arrowleft', right:'arrowright' }]
+            emu = await nostalgist.Nostalgist.launch({
+                core: cores[game.plat],
+                rom: new Blob([game.data]),
+                element: document.querySelector('#emu-container'),
+                keyBindings: [{ b:'z', a:'x', start:'enter', select:'shift' }]
             });
-
-            // Показываем кнопки на таче
-            if ('ontouchstart' in window) document.getElementById('touch').style.display = 'flex';
+            if ('ontouchstart' in window) document.getElementById('touchUI').style.display = 'flex';
+            document.documentElement.requestFullscreen().catch(()=>{});
         } catch (err) {
+            // Если эмулятор не запустился из-за SharedArrayBuffer, скрипт coi уже должен был перезагрузить страницу
+            // Но если мы тут, значит произошла другая ошибка или нужен форсированный перезапуск
             console.error(err);
-            alert("Черный экран? Обновите страницу (F5) и попробуйте еще раз. GitHub требует активации защиты.");
-            quit();
+            alert("Настраиваем систему... Сайт перезагрузится один раз.");
+            location.reload();
         }
     }
 
-    function quit() {
-        if(nst) nst.exit();
-        location.reload(); 
-    }
-
-    document.querySelectorAll('.t-btn').forEach(b => b.oncontextmenu = (e) => e.preventDefault());
+    // Фикс для тач-кнопок
+    document.querySelectorAll('.joy-btn').forEach(b => {
+        b.oncontextmenu = (e) => e.preventDefault();
+    });
 </script>
 </body>
 </html>
