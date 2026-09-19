@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Retro Station Pro</title>
+    
+    <!-- Внешние зависимости -->
+    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+    <script src="https://unpkg.com/nostalgist/dist/nostalgist.umd.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #050505;
+            --card-bg: #121212;
+            --accent: #00d4ff;
+            --text: #e0e0e0;
+            --danger: #ff4b2b;
+        }
+
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: 'Roboto', sans-serif; overflow: hidden;
+            display: flex; flex-direction: column; height: 100vh;
+        }
+
+        /* --- ИНТЕРФЕЙС БИБЛИОТЕКИ --- */
+        header {
+            padding: 20px; background: #000; display: flex; 
+            justify-content: space-between; align-items: center;
+            border-bottom: 2px solid var(--accent);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+
+        h1 { font-family: 'Orbitron', sans-serif; margin: 0; font-size: 20px; color: var(--accent); }
+
+        .lib-container {
+            flex: 1; overflow-y: auto; padding: 20px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px; align-content: start;
+        }
+
+        .game-card {
+            background: var(--card-bg); border-radius: 12px; overflow: hidden;
+            transition: 0.3s; cursor: pointer; border: 1px solid #222;
+            position: relative; animation: fadeIn 0.5s ease;
+        }
+
+        .game-card:hover { transform: scale(1.05); border-color: var(--accent); }
+        .game-card img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+        .game-card .title { padding: 10px; font-size: 13px; text-align: center; font-weight: bold; }
+        .game-card .platform { 
+            position: absolute; top: 5px; right: 5px; background: var(--accent);
+            color: #000; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 900;
+        }
+
+        /* --- ЭМУЛЯТОР --- */
+        #emu-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 1000; display: none;
+        }
+        #canvas-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+
+        /* --- ТАЧ-КНОПКИ (МОБИЛЬНЫЕ) --- */
+        .controls {
+            position: absolute; bottom: 30px; left: 0; width: 100%;
+            display: none; justify-content: space-between; padding: 0 20px;
+            box-sizing: border-box; pointer-events: none;
+        }
+        .btn {
+            background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255,255,255,0.3);
+            color: white; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; pointer-events: auto; user-select: none;
+            backdrop-filter: blur(5px); active-background: var(--accent);
+        }
+        .d-pad { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); }
+        .action-btns { display: flex; gap: 15px; align-items: flex-end; }
+        .btn-l { width: 60px; height: 60px; }
+        .btn-xl { width: 75px; height: 75px; font-weight: bold; }
+
+        /* --- КНОПКИ УПРАВЛЕНИЯ --- */
+        .exit-btn {
+            position: absolute; top: 10px; right: 10px; z-index: 2000;
+            background: var(--danger); color: white; border: none; padding: 10px 15px; border-radius: 8px;
+        }
+
+        .add-btn {
+            background: var(--accent); color: #000; border: none; padding: 10px 20px;
+            border-radius: 8px; font-weight: bold; cursor: pointer;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>RETRO STATION</h1>
+    <button class="add-btn" onclick="document.getElementById('file-input').click()">+ ДОБАВИТЬ ИГРУ</button>
+    <input type="file" id="file-input" hidden multiple onchange="handleFiles(event)">
+</header>
+
+<div class="lib-container" id="library">
+    <!-- Сюда добавляются игры -->
+</div>
+
+<div id="emu-layer">
+    <button class="exit-btn" onclick="exitEmu()">ВЫЙТИ</button>
+    <div id="canvas-container"></div>
+    
+    <!-- Сенсорное управление -->
+    <div id="touch-ui" class="controls">
+        <div class="d-pad">
+            <div></div><div class="btn btn-l" id="up">↑</div><div></div>
+            <div class="btn btn-l" id="left">←</div><div></div><div class="btn btn-l" id="right">→</div>
+            <div></div><div class="btn btn-l" id="down">↓</div><div></div>
+        </div>
+        
+        <div class="action-btns">
+            <div class="btn btn-l" id="select" style="font-size: 8px; border-radius: 10px;">SEL</div>
+            <div class="btn btn-l" id="start" style="font-size: 8px; border-radius: 10px;">START</div>
+            <div class="btn btn-xl" id="b" style="background: rgba(255, 75, 43, 0.4);">B</div>
+            <div class="btn btn-xl" id="a" style="background: rgba(0, 212, 255, 0.4);">A</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. База данных (Сохраняем игры в браузере навсегда)
+    const db = new Dexie("RetroStore");
+    db.version(1).stores({ games: '++id, name, type, data, cover' });
+
+    let player = null;
+
+    // 2. Обработка файлов и обложек
+    async function handleFiles(e) {
+        const files = e.target.files;
+        for (let file of files) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const type = getSystem(ext);
+            if (!type) continue;
+
+            const buffer = await file.arrayBuffer();
+            const name = file.name.replace(/\.[^/.]+$/, "");
+            
+            // Авто-поиск обложки
+            const cover = `https://raw.githubusercontent.com/libretro/libretro-thumbnails/master/${getPlatformName(type)}/Named_Boxarts/${encodeURIComponent(name)}.png`;
+
+            await db.games.add({ name, type, data: buffer, cover });
+        }
+        loadLibrary();
+    }
+
+    function getSystem(ext) {
+        const map = { 
+            'nes': 'nes', 'sfc': 'snes', 'smc': 'snes', 'gba': 'gba', 
+            'gb': 'gb', 'gbc': 'gbc', 'md': 'sega', 'bin': 'sega', 
+            'z64': 'n64', 'chd': 'ps1', 'cue': 'ps1' 
+        };
+        return map[ext];
+    }
+
+    function getPlatformName(type) {
+        const names = {
+            'nes': 'Nintendo_-_Nintendo_Entertainment_System',
+            'snes': 'Nintendo_-_Super_Nintendo_Entertainment_System',
+            'gba': 'Nintendo_-_Game_Boy_Advance',
+            'sega': 'Sega_-_Mega_Drive_-_Genesis',
+            'n64': 'Nintendo_-_Nintendo_64',
+            'ps1': 'Sony_-_PlayStation',
+            'gb': 'Nintendo_-_Game_Boy',
+            'gbc': 'Nintendo_-_Game_Boy_Color'
+        };
+        return names[type];
+    }
+
+    // 3. Загрузка библиотеки
+    async function loadLibrary() {
+        const container = document.getElementById('library');
+        container.innerHTML = '';
+        const allGames = await db.games.toArray();
+
+        allGames.forEach(game => {
+            const div = document.createElement('div');
+            div.className = 'game-card';
+            div.onclick = () => runGame(game);
+            div.innerHTML = `
+                <div class="platform">${game.type.toUpperCase()}</div>
+                <img src="${game.cover}" onerror="this.src='https://via.placeholder.com/150x150/121212/00d4ff?text=${game.type}'">
+                <div class="title">${game.name}</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // 4. Запуск эмулятора
+    async function runGame(game) {
+        document.getElementById('emu-layer').style.display = 'block';
+        
+        const cores = {
+            nes: 'fceumm', snes: 'snes9x', gba: 'mgba', 
+            gb: 'gambatte', gbc: 'gambatte', sega: 'genesis_plus_gx',
+            n64: 'mupen64plus_next', ps1: 'pcsx_rearmed'
+        };
+
+        try {
+            player = await nostalgist.Nostalgist.launch({
+                core: cores[game.type],
+                rom: new Blob([game.data]),
+                element: document.querySelector('#canvas-container'),
+                // Настройки управления ПК (Раскладка)
+                keyBindings: [
+                    { b: 'z', a: 'x', start: 'enter', select: 'shift', l: 'q', r: 'w', y: 'a', x: 's' }
+                ]
+            });
+
+            // Полноэкранный режим
+            if (window.innerHeight > window.innerWidth || 'ontouchstart' in window) {
+                document.getElementById('touch-ui').style.display = 'flex';
+            }
+            document.documentElement.requestFullscreen().catch(()=>{});
+
+        } catch (err) {
+            alert("Этот эмулятор слишком тяжелый для запуска без сервера. Попробуйте NES/GBA или загрузите файл в интернет.");
+            exitEmu();
+        }
+    }
+
+    function exitEmu() {
+        if (player) { player.exit(); player = null; }
+        document.getElementById('emu-layer').style.display = 'none';
+        if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+    }
+
+    // 5. Инициализация
+    loadLibrary();
+
+    // Предотвращение контекстного меню на кнопках
+    document.querySelectorAll('.btn').forEach(b => {
+        b.oncontextmenu = (e) => e.preventDefault();
+    });
+</script>
+</body>
+</html>
