@@ -2,211 +2,243 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RetroCloud Console</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>RetroStation Ultimate (Мульти Консоль) </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Inter:wght@300;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Inter:wght@300;600;800&display=swap');
         
-        body { background: #020617; color: #f8fafc; font-family: 'Inter', sans-serif; margin: 0; overflow-x: hidden; }
+        :root {
+            --bg-color: #05070a;
+            --accent-color: #3b82f6;
+        }
+
+        body { 
+            background: var(--bg-color); 
+            color: #f8fafc; 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         .font-brand { font-family: 'Orbitron', sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.08); }
         
-        .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
-        .filter-btn { transition: all 0.2s; border: 1px solid transparent; }
-        .active-btn { background: #2563eb !important; border-color: #60a5fa !important; box-shadow: 0 0 20px rgba(37, 99, 235, 0.4); }
+        /* Адаптивная сетка */
+        #game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 1.5rem;
+        }
+        @media (min-width: 768px) {
+            #game-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+        }
+
+        /* Обложки-заглушки */
+        .cover-fallback {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            color: #64748b;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .game-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+        .game-card:hover { transform: translateY(-5px); border-color: var(--accent-color); }
         
-        .game-card { transition: 0.4s cubic-bezier(0.23, 1, 0.32, 1); }
-        .game-card:hover { transform: translateY(-10px) scale(1.02); border-color: #3b82f6; }
-        
-        #emulator-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: #000; }
-        .btn-exit { position: absolute; top: 20px; right: 20px; z-index: 1001; background: rgba(239, 68, 68, 0.8); padding: 8px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        
-        /* Стили скролла */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .delete-btn {
+            position: absolute; top: 8px; right: 8px;
+            background: rgba(239, 68, 68, 0.9);
+            width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; opacity: 0; transition: 0.2s;
+            z-index: 20;
+        }
+        .game-card:hover .delete-btn { opacity: 1; }
+
+        /* Контейнер эмулятора */
+        #emulator-container { 
+            display: none; position: fixed; inset: 0; 
+            z-index: 9999; background: #000;
+        }
+
+        .emu-controls {
+            position: absolute; top: env(safe-area-inset-top, 10px); 
+            left: 10px; right: 10px;
+            display: flex; justify-content: space-between; z-index: 10000;
+            pointer-events: none;
+        }
+        .emu-btn {
+            pointer-events: auto;
+            background: rgba(0,0,0,0.6); color: white;
+            padding: 8px 15px; border-radius: 8px; font-size: 12px;
+            backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* Скрытие полосы прокрутки */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
 
-<div id="ui-layer" class="p-6 md:p-12 max-w-[1600px] mx-auto">
+<div id="ui-layer" class="p-4 md:p-10 max-w-[1400px] mx-auto">
     <!-- Header -->
-    <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12">
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
         <div>
-            <h1 class="text-6xl font-brand font-black tracking-tighter text-white">
-                RETRO<span class="text-blue-500">CLOUD</span>
-            </h1>
-            <div id="bios-status" class="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-widest">
-                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> PS1 BIOS missing
-            </div>
+            <h1 class="text-4xl md:text-5xl font-brand font-black tracking-tighter italic">RETRO<span class="text-blue-500 underline">PRO</span></h1>
+            <div id="bios-status" class="mt-2 text-[10px] font-bold opacity-50 uppercase tracking-widest">BIOS PS1 не найден</div>
         </div>
-
-        <div class="flex flex-wrap gap-4">
-            <button onclick="document.getElementById('biosInput').click()" class="glass px-5 py-3 rounded-xl text-sm font-semibold hover:bg-white/5 transition">⚙️ Настроить BIOS</button>
-            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 hover:bg-blue-500 px-10 py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-900/20 transition-all transform active:scale-95">
-                ДОБАВИТЬ ИГРУ
-            </button>
+        
+        <div class="flex flex-wrap gap-2 w-full md:w-auto">
+            <button onclick="toggleFullScreen()" class="glass px-4 py-3 rounded-xl text-xs font-bold grow md:grow-0">FULLSCREEN</button>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-black text-sm grow md:grow-0 shadow-lg transition-transform active:scale-95">ДОБАВИТЬ ИГРЫ</button>
+            <button onclick="document.getElementById('biosInput').click()" class="glass px-4 py-3 rounded-xl text-xs grow md:grow-0">BIOS</button>
         </div>
     </header>
 
-    <!-- Фильтры консолей -->
-    <div class="space-y-6 mb-12">
-        <div class="flex flex-col gap-2">
-            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Системы</span>
-            <div class="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                <button onclick="filterSystem('all', this)" class="filter-btn active-btn glass px-6 py-2 rounded-xl text-sm">ВСЕ</button>
-                <button onclick="filterSystem('nes', this)" class="filter-btn glass px-6 py-2 rounded-xl text-sm">NES</button>
-                <button onclick="filterSystem('snes', this)" class="filter-btn glass px-6 py-2 rounded-xl text-sm">SNES</button>
-                <button onclick="filterSystem('gba', this)" class="filter-btn glass px-6 py-2 rounded-xl text-sm text-green-400">GBA</button>
-                <button onclick="filterSystem('segaMD', this)" class="filter-btn glass px-6 py-2 rounded-xl text-sm text-blue-300">Sega</button>
-                <button onclick="filterSystem('psx', this)" class="filter-btn glass px-6 py-2 rounded-xl text-sm text-indigo-400">PlayStation</button>
-                <button onclick="filterSystem('n64', this)" class="filter-btn glass px-6 py-2 rounded-xl text-sm text-red-400">N64</button>
-                <button onclick="filterSystem('dos', this)" class="filter-btn glass px-6 py-2 rounded-xl text-sm text-orange-400">MS-DOS</button>
-                <button onclick="filterSystem('mame', this)" class="filter-btn glass px-6 py-2 rounded-xl text-sm text-yellow-500">Arcade</button>
-            </div>
-        </div>
+    <!-- Горизонтальный фильтр -->
+    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-6 mb-4">
+        <button onclick="filterSystem('all', this)" class="filter-btn active-btn glass px-5 py-2 rounded-full text-xs font-bold">ВСЕ</button>
+        <button onclick="filterSystem('psx', this)" class="filter-btn glass px-5 py-2 rounded-full text-xs font-bold text-indigo-400">PS1</button>
+        <button onclick="filterSystem('n64', this)" class="filter-btn glass px-5 py-2 rounded-full text-xs font-bold text-red-400">N64</button>
+        <button onclick="filterSystem('dos', this)" class="filter-btn glass px-5 py-2 rounded-full text-xs font-bold text-orange-400">DOS</button>
+        <button onclick="filterSystem('gba', this)" class="filter-btn glass px-5 py-2 rounded-full text-xs font-bold text-green-400">GBA</button>
+        <button onclick="filterSystem('segaMD', this)" class="filter-btn glass px-5 py-2 rounded-full text-xs font-bold text-blue-300">SEGA</button>
+        <button onclick="filterSystem('nes', this)" class="filter-btn glass px-5 py-2 rounded-full text-xs font-bold">NES</button>
     </div>
 
-    <!-- Сетка игр -->
-    <div id="game-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8">
-        <!-- Игры подгрузятся сюда -->
-    </div>
-
-    <!-- Инпуты -->
-    <input type="file" id="fileInput" class="hidden" multiple onchange="addGames(event)">
-    <input type="file" id="biosInput" class="hidden" onchange="addBios(event)">
+    <!-- Библиотека -->
+    <div id="game-grid"></div>
 </div>
 
-<!-- Окно эмулятора -->
+<!-- Эмулятор -->
 <div id="emulator-container">
-    <div class="btn-exit" onclick="stopEmulator()">ЗАКРЫТЬ</div>
+    <div class="emu-controls">
+        <button class="emu-btn text-red-400 font-bold" onclick="stopEmulator()">ВЫЙТИ</button>
+        <button class="emu-btn" onclick="toggleFullScreen()">ЭКРАН</button>
+    </div>
     <div id="game" style="width:100%; height:100%;"></div>
 </div>
 
+<!-- Скрытые элементы -->
+<input type="file" id="fileInput" class="hidden" multiple accept=".nes,.snes,.smc,.sfc,.gba,.gb,.gbc,.md,.gen,.bin,.cue,.chd,.iso,.n64,.z64,.zip,.exe" onchange="addGames(event)">
+<input type="file" id="biosInput" class="hidden" onchange="addBios(event)">
+
 <script>
-    // 1. Инициализация Базы Данных
-    const db = new Dexie("RetroCloudDB");
+    const db = new Dexie("RetroProDB");
     db.version(1).stores({
-        games: '++id, title, system, romBlob, cover',
-        system: 'name, blob'
+        games: '++id, title, system, romBlob',
+        config: 'name, blob'
     });
 
-    // 2. Карта форматов
     const systemMap = {
         'nes': 'nes', 'sfc': 'snes', 'smc': 'snes', 'snes': 'snes',
-        'md': 'segaMD', 'gen': 'segaMD', 'bin': 'psx', 'chd': 'psx',
+        'md': 'segaMD', 'gen': 'segaMD', 'bin': 'psx', 'chd': 'psx', 'iso': 'psx', 'cue': 'psx',
         'gba': 'gba', 'gbc': 'gbc', 'gb': 'gb', 'n64': 'n64', 'z64': 'n64',
-        'zip': 'dos', // Для DOS (архив)
-        'exe': 'dos', 'com': 'dos',
-        'nds': 'nds', 'sms': 'segaMS', 'gg': 'segaGG'
+        'zip': 'dos', 'exe': 'dos'
     };
 
-    // 3. Проверка BIOS
-    async function checkBios() {
-        const bios = await db.system.get('ps1_bios');
-        const badge = document.getElementById('bios-status');
-        if (bios) {
-            badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span> PS1 BIOS Ready';
-            badge.className = "mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-md bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-bold uppercase tracking-widest";
-        }
+    // Отрисовка игр
+    async function renderGames(filter = 'all') {
+        const grid = document.getElementById('game-grid');
+        grid.innerHTML = '';
+        const games = await db.games.toArray();
+        const filtered = filter === 'all' ? games : games.filter(g => g.system === filter);
+
+        filtered.forEach(game => {
+            const card = document.createElement('div');
+            card.className = 'game-card glass rounded-2xl overflow-hidden cursor-pointer group border border-white/5';
+            card.innerHTML = `
+                <div class="delete-btn shadow-xl" onclick="deleteGame(event, ${game.id})">
+                    <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </div>
+                <div onclick="startEmulator(${game.id})">
+                    <div class="aspect-[3/4] w-full cover-fallback">
+                        ${game.title}
+                    </div>
+                    <div class="p-3">
+                        <div class="text-[10px] font-black text-blue-500 uppercase mb-1">${game.system}</div>
+                        <div class="text-xs font-bold truncate text-slate-200">${game.title}</div>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
     }
 
-    async function addBios(event) {
-        const file = event.target.files[0];
-        if (file) {
-            await db.system.put({ name: 'ps1_bios', blob: file });
-            checkBios();
-            alert("BIOS успешно загружен в память браузера!");
-        }
-    }
-
-    // 4. Добавление игр
+    // Добавление
     async function addGames(event) {
         const files = Array.from(event.target.files);
         for (const file of files) {
             const ext = file.name.split('.').pop().toLowerCase();
             const system = systemMap[ext] || 'nes';
-            const title = file.name.replace(/\.[^/.]+$/, "");<!--citation:1-->
-            
-            // Автоматическая обложка (заглушка с текстом)
-            const cover = `https://via.placeholder.com/400x600/1e293b/ffffff?text=${encodeURIComponent(title)}`;
-            
-            await db.games.add({ title, system, romBlob: file, cover });
+            const title = file.name.replace(/\.[^/.]+$/, "");
+            await db.games.add({ title, system, romBlob: file });
         }
         renderGames();
     }
 
-    // 5. Отрисовка библиотеки
-    async function renderGames(filter = 'all') {
-        const grid = document.getElementById('game-grid');
-        grid.innerHTML = '';
-        const games = await db.games.toArray();
-        const filtered = filter === 'all' ? games : games.filter(g => g.system === filter);<!--citation:2-->
-
-        if (filtered.length === 0) {
-            grid.innerHTML = `<div class="col-span-full py-20 text-center text-slate-500 font-medium">Здесь пока пусто. Добавьте свои первые ROM-файлы!</div>`;
+    // Удаление
+    async function deleteGame(event, id) {
+        event.stopPropagation();
+        if(confirm("Удалить игру из библиотеки?")) {
+            await db.games.delete(id);
+            renderGames();
         }
-
-        filtered.forEach(game => {
-            const card = document.createElement('div');
-            card.className = 'game-card glass rounded-3xl overflow-hidden cursor-pointer flex flex-col group relative border border-transparent hover:border-blue-500/50';
-            card.innerHTML = `
-                <div class="relative aspect-[3/4] bg-slate-900 overflow-hidden">
-                    <img src="${game.cover}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-500 group-hover:scale-110">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-60"></div>
-                    <div class="absolute bottom-4 left-4 right-4">
-                        <span class="text-[9px] font-black bg-blue-600 text-white px-2 py-1 rounded-md uppercase tracking-tighter">${game.system}</span>
-                        <div class="mt-2 text-sm font-bold truncate leading-tight">${game.title}</div>
-                    </div>
-                </div>
-            `;
-            card.onclick = () => startEmulator(game);
-            grid.appendChild(card);
-        });
     }
 
-    // 6. Запуск Эмулятора
-    async function startEmulator(game) {
-        document.getElementById('emulator-container').style.display = 'block';
-        document.getElementById('ui-layer').style.display = 'none';
+    // BIOS
+    async function addBios(event) {
+        const file = event.target.files[0];
+        if (file) {
+            await db.config.put({ name: 'ps1_bios', blob: file });
+            location.reload();
+        }
+    }
 
+    // Полноэкранный режим
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                alert(`Ошибка входа в полный экран: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    // Запуск эмулятора
+    async function startEmulator(gameId) {
+        const game = await db.games.get(gameId);
+        document.getElementById('emulator-container').style.display = 'block';
+        
         const romUrl = URL.createObjectURL(game.romBlob);
         window.EJS_player = '#game';
         window.EJS_gameUrl = romUrl;
-        window.EJS_core = game.system; // 'dos', 'psx', 'nes' и т.д.
+        window.EJS_core = game.system;
         window.EJS_pathtodata = 'https://rawcdn.githack.com/EmulatorJS/EmulatorJS/main/data/';
         window.EJS_startOnLoad = true;
 
-        // Настройки BIOS для PS1
         if (game.system === 'psx') {
-            const bios = await db.system.get('ps1_bios');
+            const bios = await db.config.get('ps1_bios');
             if (bios) window.EJS_biosUrl = URL.createObjectURL(bios.blob);
         }
 
-        // Если это DOS, эмулятор сам предложит меню выбора EXE из ZIP
-        window.EJS_settings = {
-            gamepad: true,
-            saveState: true,
-            loadState: true,
-            fullScreen: true
-        };
-
         const script = document.createElement('script');
         script.src = 'https://rawcdn.githack.com/EmulatorJS/EmulatorJS/main/data/loader.js';
-        
-        script.onload = () => {
-            // Принудительный фокус для работы клавиатуры
-            setTimeout(() => {
-                const canvas = document.querySelector('canvas');
-                if(canvas) canvas.focus();
-            }, 1500);
-        };
-        
         document.body.appendChild(script);
     }
 
     function stopEmulator() {
-        if(confirm("Вернуться в меню? Убедитесь, что вы сохранили прогресс в эмуляторе.")) location.reload();
+        if(confirm("Выйти?")) location.reload();
     }
 
     function filterSystem(sys, btn) {
@@ -215,8 +247,11 @@
         renderGames(sys);
     }
 
-    // Загрузка при старте
-    checkBios();
+    // Проверка BIOS
+    db.config.get('ps1_bios').then(bios => {
+        if(bios) document.getElementById('bios-status').innerHTML = "🟢 PS1 BIOS READY";
+    });
+
     renderGames();
 </script>
 
