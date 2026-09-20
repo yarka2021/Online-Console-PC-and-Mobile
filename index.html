@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>RetroStation Pro PS</title>
+    <title>RetroStation Ultra Fix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
@@ -29,26 +29,32 @@
         .active-filter { background: #3b82f6 !important; color: white; }
 
         #emulator-container { display: none; position: fixed; inset: 0; z-index: 9999; background: #000; }
-        
-        /* --- СТИЛИ ДЛЯ PLAYSTATION (ИСКЛЮЧИТЕЛЬНО) --- */
-        /* Назначаем символы согласно запросу */
-        .is-psx div[id*="emulator"] .button-a::after { content: "✖" !important; visibility: visible; position: absolute; left: 50%; transform: translateX(-50%); }
-        .is-psx div[id*="emulator"] .button-b::after { content: "●" !important; visibility: visible; position: absolute; left: 50%; transform: translateX(-50%); }
-        .is-psx div[id*="emulator"] .button-x::after { content: "■" !important; visibility: visible; position: absolute; left: 50%; transform: translateX(-50%); }
-        .is-psx div[id*="emulator"] .button-y::after { content: "▲" !important; visibility: visible; position: absolute; left: 50%; transform: translateX(-50%); }
-        
-        /* Скрываем стандартные буквы A/B/X/Y только в режиме PSX */
-        .is-psx div[id*="emulator"] .button-a, 
-        .is-psx div[id*="emulator"] .button-b, 
-        .is-psx div[id*="emulator"] .button-x, 
-        .is-psx div[id*="emulator"] .button-y { color: transparent !important; }
 
-        /* Стиль для кнопок L/R */
-        .is-psx .button-l::after { content: "L1"; }
-        .is-psx .button-r::after { content: "R1"; }
-        .is-psx .button-l2::after { content: "L2"; }
-        .is-psx .button-r2::after { content: "R2"; }
-        /* ------------------------------------------- */
+        /* --- ПРИНУДИТЕЛЬНЫЙ PS1 ИНТЕРФЕЙС --- */
+        .is-psx [data-button="a"]::after { content: "✖" !important; }
+        .is-psx [data-button="b"]::after { content: "●" !important; }
+        .is-psx [data-button="x"]::after { content: "■" !important; }
+        .is-psx [data-button="y"]::after { content: "▲" !important; }
+        
+        /* Надписи на шифтах */
+        .is-psx [data-button="l"]::after { content: "L1" !important; }
+        .is-psx [data-button="r"]::after { content: "R1" !important; }
+        .is-psx [data-button="l2"]::after { content: "L2" !important; }
+        .is-psx [data-button="r2"]::after { content: "R2" !important; }
+
+        /* Делаем буквы прозрачными, а символы видимыми */
+        .is-psx [data-button] { color: transparent !important; position: relative; }
+        .is-psx [data-button]::after {
+            position: absolute; inset: 0; display: flex; 
+            align-items: center; justify-content: center; 
+            color: white !important; font-size: 1.2rem; visibility: visible;
+        }
+
+        /* Показываем L2/R2, которые эмулятор часто прячет */
+        .is-psx [data-button="l2"], .is-psx [data-button="r2"] {
+            display: flex !important; visibility: visible !important; opacity: 1 !important;
+        }
+        /* ------------------------------------ */
 
         .emu-ui { 
             position: absolute; top: 10px; left: 10px; right: 10px; 
@@ -75,12 +81,12 @@
     <header class="flex flex-col md:flex-row justify-between items-center gap-6 mb-10">
         <div>
             <h1 class="text-4xl font-brand italic text-blue-500 tracking-tighter">RETRO<span class="text-white">STATION</span></h1>
-            <p id="bios-status" class="text-[10px] text-red-500 font-bold mt-1 uppercase opacity-60 tracking-widest">BIOS PS1 ОТСУТСТВУЕТ</p>
+            <p id="bios-status" class="text-[10px] text-red-500 font-bold mt-1 uppercase opacity-60 tracking-widest text-center md:text-left">BIOS PS1 НЕ УСТАНОВЛЕН</p>
         </div>
         <div class="flex flex-wrap gap-2">
             <button onclick="toggleFullScreen()" class="glass px-4 py-3 rounded-xl text-xs font-bold">ЭКРАН</button>
             <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 px-6 py-3 rounded-xl font-black text-sm shadow-lg">+ ДОБАВИТЬ ИГРЫ</button>
-            <button onclick="document.getElementById('biosInput').click()" class="glass px-4 py-3 rounded-xl text-xs text-blue-300">ЗАГРУЗИТЬ BIOS</button>
+            <button onclick="document.getElementById('biosInput').click()" class="glass px-4 py-3 rounded-xl text-xs text-blue-300 italic">BIOS PS1</button>
         </div>
     </header>
 
@@ -88,12 +94,15 @@
     <div class="flex gap-2 overflow-x-auto no-scrollbar pb-6 mb-4">
         <button onclick="filterSystem('all', this)" class="filter-btn active-filter glass px-6 py-2 rounded-full text-xs font-bold">ВСЕ</button>
         <button onclick="filterSystem('psx', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-indigo-400 italic tracking-widest">PLAYSTATION</button>
+        <button onclick="filterSystem('dos', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-orange-400 uppercase">MS-DOS</button>
+        <button onclick="filterSystem('mame', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-yellow-500 uppercase">MAME (Arcade)</button>
+        <button onclick="filterSystem('n64', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-red-400 uppercase">N64</button>
         <button onclick="filterSystem('gba', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-green-400 uppercase">GBA</button>
-        <button onclick="filterSystem('segaMD', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-blue-300 uppercase">SEGA</button>
+        <button onclick="filterSystem('segaMD', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-blue-300 uppercase tracking-tighter">SEGA</button>
         <button onclick="filterSystem('nes', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold uppercase">NES</button>
     </div>
 
-    <!-- Сетка -->
+    <!-- Библиотека -->
     <div id="game-grid"></div>
 </div>
 
@@ -101,22 +110,22 @@
 <div id="emulator-container">
     <div class="emu-ui">
         <button onclick="stopEmulator()" style="color: #ff4d4d;">ВЫЙТИ</button>
-        <button onclick="alert('Раскладка PS1:\n✖ = A (Ввод)\n● = B (Назад)\n■ = X\n▲ = Y')">КНОПКИ</button>
+        <button onclick="alert('Управление:\n△ ◯ ✖ □ + L1, L2, R1, R2\nДля перемещения кнопок используйте настройки (шестеренка) -> Controls')">УПРАВЛЕНИЕ</button>
     </div>
     <div id="game" style="width:100%; height:100%;"></div>
 </div>
 
-<input type="file" id="fileInput" class="hidden" multiple onchange="addGames(event)">
+<input type="file" id="fileInput" class="hidden" multiple accept=".nes,.snes,.smc,.sfc,.gba,.gb,.gbc,.md,.gen,.bin,.cue,.chd,.iso,.n64,.z64,.zip,.exe" onchange="addGames(event)">
 <input type="file" id="biosInput" class="hidden" onchange="addBios(event)">
 
 <script>
-    const db = new Dexie("RetroFinalDB");
+    const db = new Dexie("RetroFinalFixedDB");
     db.version(1).stores({ games: '++id, title, system, romBlob', config: 'name, blob' });
 
     const systemMap = {
         'nes': 'nes', 'sfc': 'snes', 'snes': 'snes', 'md': 'segaMD', 'gen': 'segaMD',
         'bin': 'psx', 'chd': 'psx', 'iso': 'psx', 'cue': 'psx', 'gba': 'gba', 
-        'n64': 'n64', 'z64': 'n64', 'zip': 'dos'
+        'n64': 'n64', 'z64': 'n64', 'zip': 'mame', 'exe': 'dos'
     };
 
     async function renderGames(filter = 'all') {
@@ -133,7 +142,7 @@
                 <div onclick="startEmulator(${game.id})">
                     <div class="cover-art">${game.title}</div>
                     <div class="p-3">
-                        <div class="text-[9px] text-blue-400 font-bold uppercase tracking-widest">${game.system}</div>
+                        <div class="text-[9px] text-blue-400 font-bold uppercase">${game.system}</div>
                         <div class="truncate text-xs font-bold text-slate-300">${game.title}</div>
                     </div>
                 </div>
@@ -146,6 +155,7 @@
         for (const file of event.target.files) {
             const ext = file.name.split('.').pop().toLowerCase();
             const system = systemMap[ext] || 'nes';
+            // Если это zip, проверяем не DOS ли это (пользователь может переименовать или мы просто даем выбор)
             await db.games.add({ title: file.name.replace(/\.[^/.]+$/, ""), system, romBlob: file });
         }
         renderGames();
@@ -173,9 +183,7 @@
         const container = document.getElementById('emulator-container');
         
         container.classList.remove('is-psx');
-        if (game.system === 'psx') {
-            container.classList.add('is-psx');
-        }
+        if (game.system === 'psx') container.classList.add('is-psx');
 
         container.style.display = 'block';
         
@@ -185,6 +193,7 @@
         window.EJS_pathtodata = 'https://rawcdn.githack.com/EmulatorJS/EmulatorJS/main/data/';
         window.EJS_startOnLoad = true;
 
+        // Принудительное включение всех кнопок
         window.EJS_buttons = {
             l: true, r: true, l2: true, r2: true,
             l3: true, r3: true,
@@ -195,7 +204,7 @@
         if (game.system === 'psx') {
             const bios = await db.config.get('ps1_bios');
             if (bios) window.EJS_biosUrl = URL.createObjectURL(bios.blob);
-            window.EJS_defaultControllerType = 5; // Активация стиков
+            window.EJS_defaultControllerType = 5; // DualShock
         }
 
         const script = document.createElement('script');
@@ -214,7 +223,7 @@
         if(bios) {
             const b = document.getElementById('bios-status');
             b.innerText = "🟢 PS1 BIOS ГОТОВ";
-            b.className = "text-[10px] text-green-500 font-bold mt-1 uppercase tracking-widest";
+            b.className = "text-[10px] text-green-500 font-bold mt-1 uppercase tracking-widest text-center md:text-left";
         }
     });
 
