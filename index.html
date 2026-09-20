@@ -2,203 +2,193 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>RetroCloud</title>
-    
-    <!-- Авто-исправление для GitHub Pages (убирает черный экран) -->
-    <script src="https://cdn.jsdelivr.net/gh/gzuidhof/coi-serviceworker@latest/coi-serviceworker.min.js"></script>
-    
-    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
-    <script src="https://unpkg.com/nostalgist/dist/nostalgist.umd.js"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N64 Retro Station</title>
+    <script src="https://cdn.jsdelivr.net/gh/ethanahearn/emulatorjs@latest/dist/emulator.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
-        :root { --accent: #00e5ff; --bg: #000; --card: #151515; }
-        * { -webkit-tap-highlight-color: transparent; outline: none; }
-        body { 
-            margin: 0; background: var(--bg); color: #fff; 
-            font-family: 'Segoe UI', system-ui, sans-serif; 
-            overflow: hidden; height: 100vh; display: flex; flex-direction: column;
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-purple: #bc13fe;
+            --bg-dark: #0a0a0c;
         }
 
-        /* Навигация */
-        header { 
-            height: 60px; background: #111; display: flex; 
-            align-items: center; padding: 0 20px; border-bottom: 2px solid var(--accent);
-            justify-content: space-between; flex-shrink: 0;
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #0a0a0c 100%);
         }
-        .btn-back { background: #333; border: none; color: #fff; padding: 8px 15px; border-radius: 6px; cursor: pointer; display: none; }
-        .logo { font-weight: 800; color: var(--accent); letter-spacing: 1px; }
 
-        /* Экраны */
-        .screen { flex-grow: 1; overflow-y: auto; padding: 20px; display: none; box-sizing: border-box; }
-        .active { display: block; }
-
-        /* Консоли */
-        .c-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; }
-        .c-item { 
-            background: var(--card); border: 1px solid #222; border-radius: 12px; 
-            padding: 30px 10px; text-align: center; cursor: pointer; transition: 0.2s;
+        /* Анимированный фон с сеткой */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(188, 19, 254, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(188, 19, 254, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(500px) rotateX(60deg);
+            transform-origin: center top;
+            z-index: -1;
+            animation: grid-move 10s linear infinite;
         }
-        .c-item:hover { border-color: var(--accent); transform: translateY(-3px); }
-        .c-item b { display: block; margin-top: 10px; font-size: 14px; text-transform: uppercase; }
 
-        /* Игры */
-        .g-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px; }
-        .g-card { background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; text-align: center; cursor: pointer; }
-        .g-card img { width: 100%; aspect-ratio: 1; object-fit: cover; background: #222; }
-        .g-card div { padding: 8px; font-size: 11px; height: 32px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-
-        /* Эмулятор */
-        #emu-view { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; }
-        .quit-btn { position: absolute; top: 15px; right: 15px; z-index: 10001; background: #f44336; border: none; color: #fff; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-
-        /* Тач-управление */
-        .touch-ui { 
-            position: absolute; bottom: 30px; left: 0; width: 100%; 
-            display: none; justify-content: space-between; padding: 0 25px; 
-            box-sizing: border-box; pointer-events: none; z-index: 10000;
+        @keyframes grid-move {
+            from { background-position: 0 0; }
+            to { background-position: 0 50px; }
         }
-        .joy-btn { 
-            width: 65px; height: 65px; background: rgba(255,255,255,0.1); 
-            border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; 
-            color: #fff; pointer-events: auto; backdrop-filter: blur(5px);
-        }
-        .joy-btn:active { background: var(--accent); color: #000; transform: scale(0.9); }
 
-        /* Кнопка Добавить */
-        .add-btn { 
-            position: fixed; bottom: 30px; right: 30px; background: var(--accent); 
-            width: 65px; height: 65px; border-radius: 50%; display: flex; 
-            align-items: center; justify-content: center; color: #000; 
-            font-size: 35px; cursor: pointer; box-shadow: 0 5px 20px rgba(0,229,255,0.4);
+        header {
+            margin-top: 2rem;
+            text-align: center;
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5rem;
+            color: var(--neon-blue);
+            margin-bottom: 10px;
+        }
+
+        /* Контейнер эмулятора */
+        #game-container {
+            width: 800px;
+            height: 600px;
+            max-width: 95vw;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid var(--neon-purple);
+            box-shadow: 0 0 20px rgba(188, 19, 254, 0.5), inset 0 0 15px rgba(0, 242, 255, 0.2);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .btn-upload {
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 10px 20px;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.3s;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .btn-upload:hover {
+            background: var(--neon-blue);
+            color: black;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        #status {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 10px;
+        }
+
+        .instructions {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 600px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        span.key {
+            color: var(--neon-purple);
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
 
-<header>
-    <button class="btn-back" id="btnBack" onclick="goHome()">← НАЗАД</button>
-    <div class="logo">RETRO CLOUD</div>
-    <div id="stat" style="font-size: 10px; color: var(--accent)">● READY</div>
-</header>
+    <header>
+        <h1>N64 ULTRA CORE</h1>
+        <p>WEB EMULATION STATION</p>
+    </header>
 
-<!-- Экран 1: Приставки -->
-<div id="scrHome" class="screen active">
-    <div class="c-grid">
-        <div class="c-item" onclick="openConsole('nes')">🎮<b>NES</b></div>
-        <div class="c-item" onclick="openConsole('snes')">🕹️<b>SNES</b></div>
-        <div class="c-item" onclick="openConsole('gba')">📟<b>GBA</b></div>
-        <div class="c-item" onclick="openConsole('sega')">🦔<b>SEGA</b></div>
-        <div class="c-item" onclick="openConsole('ps1')">💿<b>PS1</b></div>
-        <div class="c-item" onclick="openConsole('n64')">🧊<b>N64</b></div>
-        <div class="c-item" onclick="openConsole('gbc')">🌈<b>GBC</b></div>
-        <div class="c-item" onclick="openConsole('gb')">⚪<b>GB</b></div>
-    </div>
-</div>
-
-<!-- Экран 2: Список игр -->
-<div id="scrLib" class="screen">
-    <div class="g-grid" id="gameGrid"></div>
-    <div class="add-btn" onclick="document.getElementById('fileIn').click()">+</div>
-</div>
-
-<!-- Экран 3: Эмулятор -->
-<div id="emu-view">
-    <button class="quit-btn" onclick="location.reload()">ВЫЙТИ</button>
-    <div id="emu-container" style="width:100%; height:100%"></div>
-    
-    <div id="touchUI" class="touch-ui">
-        <div style="display:grid; grid-template-columns:repeat(3, 65px); gap:5px">
-            <div></div><div class="joy-btn" id="up">↑</div><div></div>
-            <div class="joy-btn" id="left">←</div><div></div><div class="joy-btn" id="right">→</div>
-            <div></div><div class="joy-btn" id="down">↓</div><div></div>
+    <div id="game-container">
+        <div id="placeholder">
+            <p style="text-align: center; color: #555;">Ожидание загрузки ROM...<br>Нажмите кнопку ниже</p>
         </div>
-        <div style="display:flex; gap:15px; align-items:flex-end">
-            <div class="joy-btn" id="start" style="width:50px; height:50px; font-size:10px">START</div>
-            <div class="joy-btn" id="b" style="background:rgba(255,0,0,0.2)">B</div>
-            <div class="joy-btn" id="a" style="background:rgba(0,255,0,0.2)">A</div>
-        </div>
+        <div id="emulator" style="width:100%; height:100%;"></div>
     </div>
-</div>
 
-<input type="file" id="fileIn" hidden onchange="uploadGame(event)">
+    <div class="controls">
+        <label class="btn-upload">
+            Выбрать игру (.n64, .z64)
+            <input type="file" id="rom-input" accept=".n64,.z64,.v64">
+        </label>
+    </div>
 
-<script>
-    const db = new Dexie("GameDB");
-    db.version(1).stores({ games: '++id, plat, name, data, cover' });
+    <div class="instructions">
+        <div style="text-align: center; margin-bottom: 10px; color: var(--neon-blue);">УПРАВЛЕНИЕ:</div>
+        • <b>Стики:</b> Стрелки клавиатуры | <b>Кнопки A/B:</b> X / C<br>
+        • <b>Кнопки C:</b> I / J / K / L | <b>Z-триггер:</b> Z<br>
+        • <b>Start:</b> Enter | <b>L/R:</b> Q / E
+    </div>
 
-    let activePlat = '';
-    let emu = null;
+    <p id="status">Powered by EmulatorJS & Mupen64Plus</p>
 
-    // Навигация
-    function openConsole(p) {
-        activePlat = p;
-        document.getElementById('scrHome').classList.remove('active');
-        document.getElementById('scrLib').classList.add('active');
-        document.getElementById('btnBack').style.display = 'block';
-        drawGames();
-    }
+    <script>
+        const romInput = document.getElementById('rom-input');
+        const placeholder = document.getElementById('placeholder');
 
-    function goHome() {
-        document.getElementById('scrLib').classList.remove('active');
-        document.getElementById('scrHome').classList.add('active');
-        document.getElementById('btnBack').style.display = 'none';
-    }
+        romInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
 
-    // Отрисовка
-    async function drawGames() {
-        const grid = document.getElementById('gameGrid');
-        grid.innerHTML = '';
-        const games = await db.games.where('plat').equals(activePlat).toArray();
-        games.forEach(g => {
-            const el = document.createElement('div');
-            el.className = 'g-card';
-            el.onclick = () => run(g);
-            el.innerHTML = `<img src="${g.cover}" onerror="this.src='https://via.placeholder.com/150/151515/00e5ff?text=${g.plat}'"><div>${g.name}</div>`;
-            grid.appendChild(el);
+            placeholder.style.display = 'none';
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const romData = event.target.result;
+                
+                // Инициализация эмулятора
+                window.EJS_player = '#emulator';
+                window.EJS_core = 'n64'; // Ядро Nintendo 64
+                window.EJS_gameName = file.name;
+                window.EJS_color = '#bc13fe';
+                window.EJS_startOnLoaded = true;
+                window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/ethanahearn/emulatorjs@latest/dist/data/';
+                window.EJS_gameUrl = URL.createObjectURL(new Blob([romData]));
+
+                // Загрузка загрузчика эмулятора
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/gh/ethanahearn/emulatorjs@latest/dist/loader.js';
+                document.body.appendChild(script);
+            };
+            reader.readAsArrayBuffer(file);
         });
-    }
-
-    // Загрузка
-    async function uploadGame(e) {
-        const f = e.target.files[0];
-        if (!f) return;
-        const name = f.name.replace(/\.[^/.]+$/, "");
-        const buf = await f.arrayBuffer();
-        const ps = { nes:'Nintendo_-_Nintendo_Entertainment_System', snes:'Nintendo_-_Super_Nintendo_Entertainment_System', gba:'Nintendo_-_Game_Boy_Advance', gbc:'Nintendo_-_Game_Boy_Color', sega:'Sega_-_Mega_Drive_-_Genesis', ps1:'Sony_-_PlayStation', n64:'Nintendo_-_Nintendo_64', gb:'Nintendo_-_Game_Boy' };
-        const cover = `https://raw.githubusercontent.com/libretro/libretro-thumbnails/master/${ps[activePlat]}/Named_Boxarts/${encodeURIComponent(name)}.png`;
-        await db.games.add({ plat: activePlat, name, data: buf, cover });
-        drawGames();
-    }
-
-    // Запуск (Без ручного F5)
-    async function run(game) {
-        document.getElementById('emu-view').style.display = 'block';
-        const cores = { nes:'fceumm', snes:'snes9x', gba:'mgba', gbc:'gambatte', gb:'gambatte', sega:'genesis_plus_gx', ps1:'pcsx_rearmed', n64:'mupen64plus_next' };
-
-        try {
-            emu = await nostalgist.Nostalgist.launch({
-                core: cores[game.plat],
-                rom: new Blob([game.data]),
-                element: document.querySelector('#emu-container'),
-                keyBindings: [{ b:'z', a:'x', start:'enter', select:'shift' }]
-            });
-            if ('ontouchstart' in window) document.getElementById('touchUI').style.display = 'flex';
-            document.documentElement.requestFullscreen().catch(()=>{});
-        } catch (err) {
-            // Если эмулятор не запустился из-за SharedArrayBuffer, скрипт coi уже должен был перезагрузить страницу
-            // Но если мы тут, значит произошла другая ошибка или нужен форсированный перезапуск
-            console.error(err);
-            alert("Настраиваем систему... Сайт перезагрузится один раз.");
-            location.reload();
-        }
-    }
-
-    // Фикс для тач-кнопок
-    document.querySelectorAll('.joy-btn').forEach(b => {
-        b.oncontextmenu = (e) => e.preventDefault();
-    });
-</script>
+    </script>
 </body>
 </html>
