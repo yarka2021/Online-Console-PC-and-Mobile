@@ -4,136 +4,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>RetroStation</title>
+    
+    <!-- PWA Настройки -->
+    <meta name="theme-color" content="#00439c">
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIlJldHJvU3RhdGlvbiBFdGVybmFsIiwKICAic2hvcnRfbmFtZSI6ICJSZXRyb1N0YXRpb24iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzAwMDIwNSIsCiAgInRoZW1lX2NvbG9yIjogIiMwMDQzOWMiLAogICJpY29ucyI6IFt7InNyYyI6ICJodHRwczovL3ZpYS5wbGFjZWhvbGRlci5jb20vMTkyLzAwNDM5Yy9mZmZmZmYiLCAic2l6ZXMiOiAiMTkyeDE5MiIsICJ0eXBlIjogImltYWdlL3BuZyJ9XQp9">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;900&display=swap');
         
-        :root {
-            --ps-blue: #00439c;
-            --theme-color: #00439c;
-            --bg-dark: #000205;
-        }
+        :root { --ps-blue: #00439c; --theme-color: #00439c; --bg-dark: #000205; }
+        body { background-color: var(--bg-dark); color: white; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; user-select: none; }
 
-        body { 
-            background-color: var(--bg-dark); 
-            color: white; 
-            font-family: 'Inter', sans-serif; 
-            margin: 0; 
-            overflow-x: hidden;
-            user-select: none;
-        }
+        #bg-canvas { position: fixed; inset: 0; z-index: -1; background: radial-gradient(circle at 70% 20%, var(--theme-color), transparent 50%), radial-gradient(circle at 20% 80%, #000, transparent 50%); transition: background 1.5s ease; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        
+        .game-card { position: relative; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); border-radius: 14px; transform-origin: center; cursor: pointer; border: 1px solid transparent; }
+        .game-card:hover { transform: scale(1.12) translateY(-10px); z-index: 50; box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 20px var(--theme-color); border: 2px solid white; }
+        .game-card.favorite::after { content: '★'; position: absolute; top: 8px; right: 8px; color: #ffd700; font-size: 18px; text-shadow: 0 0 5px black; z-index: 10; }
 
-        /* Живой фон */
-        #bg-canvas {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: -1;
-            background: radial-gradient(circle at top right, var(--theme-color), transparent 40%),
-                        radial-gradient(circle at bottom left, #000, transparent 50%);
-            transition: --theme-color 1s ease;
-        }
-
-        .glass { 
-            background: rgba(255, 255, 255, 0.03); 
-            backdrop-filter: blur(20px); 
-            border: 1px solid rgba(255, 255, 255, 0.08); 
-        }
-
-        .game-card {
-            position: relative;
-            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-            border-radius: 12px;
-            transform-origin: center;
-        }
-
-        .game-card:hover {
-            transform: scale(1.08);
-            z-index: 50;
-            box-shadow: 0 0 30px var(--theme-color);
-            border: 2px solid white;
-        }
-
-        .game-card.favorite::before {
-            content: '★';
-            position: absolute; top: 10px; left: 10px;
-            color: #ffd700; font-size: 20px; z-index: 10;
-            text-shadow: 0 0 10px black;
-        }
-
-        /* Категории PS5 Style */
-        .filter-btn {
-            position: relative;
-            padding: 10px 20px;
-            font-weight: 600;
-            font-size: 14px;
-            color: rgba(255,255,255,0.5);
-            transition: 0.3s;
-        }
-        .filter-btn.active {
-            color: white;
-            transform: scale(1.1);
-        }
-        .filter-btn.active::after {
-            content: '';
-            position: absolute; bottom: -5px; left: 50%;
-            width: 5px; height: 5px; background: white;
-            border-radius: 50%; transform: translateX(-50%);
-        }
+        .filter-btn { position: relative; padding: 12px 18px; font-weight: 600; font-size: 12px; color: rgba(255,255,255,0.4); transition: 0.4s; white-space: nowrap; text-transform: uppercase; letter-spacing: 1px; }
+        .filter-btn.active { color: white; transform: scale(1.15); }
+        .filter-btn.active::after { content: ''; position: absolute; bottom: 0; left: 50%; width: 20px; height: 2px; background: white; transform: translateX(-50%); box-shadow: 0 0 10px white; }
 
         #emulator-container { display: none; position: fixed; inset: 0; z-index: 9999; background: #000; }
-
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
+
+        /* PlayStation Symbols Overrides */
+        .is-psx [data-button], .is-ps2 [data-button] { color: transparent !important; }
+        .is-psx [data-button]::after, .is-ps2 [data-button]::after { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: white !important; font-size: 24px; visibility: visible; font-weight: 900; }
+        .is-psx [data-button="a"]::after, .is-ps2 [data-button="a"]::after { content: "✖"; color: #88aaff !important; }
+        .is-psx [data-button="b"]::after, .is-ps2 [data-button="b"]::after { content: "●"; color: #ff8888 !important; }
+        .is-psx [data-button="x"]::after, .is-ps2 [data-button="x"]::after { content: "■"; color: #ffcc88 !important; }
+        .is-psx [data-button="y"]::after, .is-ps2 [data-button="y"]::after { content: "▲"; color: #88ff88 !important; }
     </style>
 </head>
 <body>
 
 <canvas id="bg-canvas"></canvas>
 
-<div id="ui-layer" class="p-6 md:p-16 min-h-screen flex flex-col">
-    <!-- Header -->
-    <header class="flex justify-between items-center mb-12">
+<div id="ui-layer" class="p-4 md:p-12 min-h-screen flex flex-col relative z-10">
+    <!-- Top Bar -->
+    <header class="flex justify-between items-center mb-10">
         <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-bold text-xl glass">P</div>
-            <h1 class="text-2xl font-light tracking-widest uppercase">Retro Station <span class="font-black">5</span></h1>
+            <div class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-2xl glass border-white/20">RS</div>
+            <div>
+                <h1 class="text-xl font-light tracking-[0.2em] uppercase">Eternal <span class="font-black text-blue-500">Hub</span></h1>
+                <p id="game-count" class="text-[9px] opacity-40 font-bold tracking-widest uppercase"></p>
+            </div>
         </div>
         <div class="flex gap-3">
-            <button onclick="exportLibrary()" class="glass p-3 rounded-full hover:bg-white/10 transition" title="Backup (Облако)">☁️</button>
-            <button onclick="document.getElementById('fileInput').click()" class="glass px-6 py-2 rounded-full font-bold text-sm hover:bg-white/20 transition">Добавить игру</button>
-            <button onclick="document.getElementById('biosInput').click()" class="glass p-2 rounded-full text-xs">BIOS</button>
+            <button onclick="exportLibrary()" class="glass w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 transition">☁️</button>
+            <button onclick="document.getElementById('fileInput').click()" class="glass px-6 py-2 rounded-full font-bold text-xs hover:bg-white/20 transition uppercase tracking-tighter">Добавить контент</button>
         </div>
     </header>
 
-    <!-- Поиск (скрыт если < 15 игр) -->
-    <div id="search-container" class="hidden mb-8">
-        <input type="text" id="searchInput" oninput="searchGames()" placeholder="Поиск по библиотеке..." class="w-full max-w-md glass bg-white/5 border-none rounded-xl px-6 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none">
+    <!-- Search (Visible if games >= 15) -->
+    <div id="search-container" class="hidden mb-8 animate-fade-in">
+        <input type="text" id="searchInput" oninput="searchGames()" placeholder="Поиск в библиотеке..." class="w-full max-w-lg glass bg-white/5 border-none rounded-2xl px-8 py-4 text-white outline-none focus:ring-2 ring-blue-500/50 transition-all">
     </div>
 
-    <!-- Категории -->
-    <nav class="flex gap-6 overflow-x-auto no-scrollbar mb-10 pb-4">
-        <button onclick="setFilter('all', this, '#00439c')" class="filter-btn active">Все игры</button>
-        <button onclick="setFilter('favorite', this, '#ffd700')" class="filter-btn">Избранное</button>
+    <!-- Navigation -->
+    <nav class="flex gap-2 overflow-x-auto no-scrollbar mb-10 pb-4 mask-fade">
+        <button onclick="setFilter('all', this, '#00439c')" class="filter-btn active">Все</button>
+        <button onclick="setFilter('favorite', this, '#ffd700')" class="filter-btn">⭐ Избранное</button>
         <button onclick="setFilter('psx', this, '#00439c')" class="filter-btn">PlayStation</button>
-        <button onclick="setFilter('nds', this, '#ff4d4d')" class="filter-btn">Nintendo DS</button>
-        <button onclick="setFilter('gba', this, '#22c55e')" class="filter-btn">Game Boy</button>
-        <button onclick="setFilter('snes', this, '#ef4444')" class="filter-btn">SNES</button>
+        <button onclick="setFilter('nes', this, '#ffffff')" class="filter-btn">NES</button>
+        <button onclick="setFilter('snes', this, '#ff4d4d')" class="filter-btn">SNES</button>
+        <button onclick="setFilter('gba', this, '#10b981')" class="filter-btn">GBA</button>
         <button onclick="setFilter('segaMD', this, '#3b82f6')" class="filter-btn">Sega</button>
+        <button onclick="setFilter('dos', this, '#fb923c')" class="filter-btn">MS-DOS</button>
+        <button onclick="setFilter('mame', this, '#facc15')" class="filter-btn">MAME</button>
+        <button onclick="setFilter('nds', this, '#f43f5e')" class="filter-btn">NDS</button>
     </nav>
 
-    <!-- Сетка игр -->
+    <!-- Library Grid -->
     <div id="game-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6"></div>
 </div>
 
+<!-- Emulator Overlay -->
 <div id="emulator-container">
-    <div class="absolute top-5 left-5 z-[10000] flex gap-2">
-        <button onclick="stopEmulator()" class="glass px-6 py-2 rounded-xl font-bold text-red-500">ВЫЙТИ</button>
+    <div class="absolute top-6 left-6 z-[10000] flex gap-3">
+        <button onclick="stopEmulator()" class="glass px-6 py-2 rounded-xl font-bold text-red-500 text-xs uppercase tracking-widest hover:bg-red-500/20 transition">Выход</button>
+        <button onclick="shareNetplay()" id="netplay-share-btn" class="glass px-6 py-2 rounded-xl font-bold text-blue-400 text-xs uppercase tracking-widest hidden">Пригласить друга 🌐</button>
     </div>
     <div id="game" style="width:100%; height:100%;"></div>
 </div>
@@ -142,51 +97,48 @@
 <input type="file" id="biosInput" class="hidden" onchange="addBios(event)">
 
 <script>
-    const db = new Dexie("PS5RetroStore");
-    db.version(2).stores({ 
+    const db = new Dexie("RetroEternalStore");
+    db.version(1).stores({ 
         games: '++id, title, system, romBlob, isFavorite, cover', 
         config: 'name, blob' 
     });
 
     let currentFilter = 'all';
+    let netplayRoom = new URLSearchParams(window.location.search).get('room');
 
-    // --- Живой фон (Анимация частиц) ---
+    // --- PS5 Background Canvas ---
     const canvas = document.getElementById('bg-canvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
+    let mouse = { x: 0, y: 0 };
 
     function initParticles() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
         particles = [];
-        for(let i=0; i<60; i++) {
-            particles.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                size: Math.random() * 2,
-                speedX: (Math.random() - 0.5) * 0.5,
-                speedY: (Math.random() - 0.5) * 0.5,
-                alpha: Math.random()
-            });
-        }
+        for(let i=0; i<70; i++) particles.push({ 
+            x: Math.random() * canvas.width, 
+            y: Math.random() * canvas.height, 
+            size: Math.random() * 2 + 0.5, 
+            speedX: (Math.random() - 0.5) * 0.4, 
+            speedY: (Math.random() - 0.5) * 0.4, 
+            alpha: Math.random() * 0.5 + 0.2 
+        });
     }
 
     function animateBackground() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         particles.forEach(p => {
-            p.x += p.speedX;
-            p.y += p.speedY;
-            if(p.x > canvas.width) p.x = 0;
-            if(p.y > canvas.height) p.y = 0;
+            p.x += p.speedX; p.y += p.speedY;
+            if(p.x > canvas.width) p.x = 0; if(p.y > canvas.height) p.y = 0;
             ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
         });
         requestAnimationFrame(animateBackground);
     }
 
-    // Изменение цвета темы
+    window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    window.addEventListener('resize', initParticles);
+
     function setFilter(sys, btn, color) {
         currentFilter = sys;
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -195,50 +147,48 @@
         renderGames();
     }
 
-    // --- Логика Игр ---
+    // --- Logic ---
     const systemMap = {
-        'nes': 'nes', 'snes': 'snes', 'sfc': 'snes', 'smc': 'snes',
-        'md': 'segaMD', 'gen': 'segaMD', 'bin': 'psx', 'chd': 'psx', 
-        'iso': 'psx', 'cue': 'psx', 'gba': 'gba', 'gb': 'gb', 'gbc': 'gbc',
-        'n64': 'n64', 'nds': 'nds', 'sms': 'segaMS', 'gg': 'segaGG',
-        'pce': 'pce', 'a26': 'atari2600', 'ngc': 'ngp'
+        'nes': 'nes', 'snes': 'snes', 'sfc': 'snes', 'smc': 'snes', 'md': 'segaMD', 
+        'bin': 'psx', 'chd': 'psx', 'iso': 'psx', 'gba': 'gba', 'gb': 'gb', 'gbc': 'gbc', 
+        'n64': 'n64', 'nds': 'nds', 'sms': 'segaMS', 'gg': 'segaGG', 'pce': 'pce', 
+        'ws': 'wswan', 'wsc': 'wswan', 'zip': 'mame'
     };
 
     async function addGames(event) {
         for (const file of event.target.files) {
+            if (file.type === "application/json") {
+                const reader = new FileReader();
+                reader.onload = async (e) => { try { const games = JSON.parse(e.target.result); await db.games.bulkAdd(games); renderGames(); } catch(err) { alert("Ошибка импорта"); } };
+                reader.readAsText(file); continue;
+            }
             const ext = file.name.split('.').pop().toLowerCase();
             let system = systemMap[ext] || 'nes';
-            if (ext === 'iso') system = confirm("PlayStation 2?") ? 'play' : 'psx';
-            
+            if (ext === 'zip') {
+                const choice = prompt("Тип ZIP-архива:\n1 - MAME (Аркады)\n2 - DOS\n3 - Neo Geo\n4 - ScummVM", "1");
+                system = choice === "2" ? "dos" : (choice === "3" ? "neogeo" : (choice === "4" ? "scummvm" : "mame"));
+            } else if (ext === 'iso' && file.size > 500000000) {
+                system = confirm("Это игра PS2?") ? 'play' : 'psx';
+            }
             const title = file.name.replace(/\.[^/.]+$/, "");
-            
-            // Авто-поиск обложки (через API Libretro или Google Search Proxy)
-            const coverUrl = `https://raw.githubusercontent.com/libretro-thumbnails/libretro-thumbnails/master/${getSystemName(system)}/Named_Boxarts/${encodeURIComponent(title)}.png`;
-
-            await db.games.add({ 
-                title: title, 
-                system, 
-                romBlob: file, 
-                isFavorite: 0,
-                cover: coverUrl 
-            });
+            const coverUrl = `https://raw.githubusercontent.com/libretro-thumbnails/libretro-thumbnails/master/${getLibName(system)}/Named_Boxarts/${encodeURIComponent(title)}.png`;
+            await db.games.add({ title, system, romBlob: file, isFavorite: 0, cover: coverUrl });
         }
         renderGames();
     }
 
-    function getSystemName(sys) {
-        const names = {'psx': 'Sony_-_PlayStation', 'snes': 'Nintendo_-_Super_Nintendo_Entertainment_System', 'nes': 'Nintendo_-_Nintendo_Entertainment_System', 'gba': 'Nintendo_-_Game_Boy_Advance', 'gb': 'Nintendo_-_Game_Boy'};
-        return names[sys] || 'Sony_-_PlayStation';
+    function getLibName(sys) {
+        const m = {'psx':'Sony_-_PlayStation','nes':'Nintendo_-_Nintendo_Entertainment_System','snes':'Nintendo_-_Super_Nintendo_Entertainment_System','gba':'Nintendo_-_Game_Boy_Advance','mame':'MAME','dos':'DOS'};
+        return m[sys] || 'Sony_-_PlayStation';
     }
 
     async function renderGames() {
         const grid = document.getElementById('game-grid');
         grid.innerHTML = '';
         const games = await db.games.toArray();
-
-        // Показ поиска если игр >= 15
+        document.getElementById('game-count').innerText = `${games.length} объектов в системе`;
         document.getElementById('search-container').classList.toggle('hidden', games.length < 15);
-
+        
         let filtered = games;
         if(currentFilter === 'favorite') filtered = games.filter(g => g.isFavorite);
         else if(currentFilter !== 'all') filtered = games.filter(g => g.system === (currentFilter === 'ps2' ? 'play' : currentFilter));
@@ -247,16 +197,17 @@
             const card = document.createElement('div');
             card.className = `game-card glass overflow-hidden ${game.isFavorite ? 'favorite' : ''}`;
             card.innerHTML = `
-                <div class="aspect-[3/4] bg-gray-900 relative">
-                    <img src="${game.cover}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x400/001/fff?text=${encodeURIComponent(game.title)}'">
-                    <div class="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black to-transparent">
-                        <div class="text-[10px] font-bold text-blue-400 uppercase">${game.system}</div>
-                        <div class="text-sm font-bold truncate">${game.title}</div>
+                <div class="aspect-[3/4] bg-neutral-900 relative group">
+                    <img src="${game.cover}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x400/050505/fff?text=${encodeURIComponent(game.title)}'">
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                        <button onclick="toggleFav(event, ${game.id})" class="text-2xl hover:scale-125 transition">⭐</button>
+                        <button onclick="startNetplay(event, ${game.id})" class="text-2xl hover:scale-125 transition">🌐</button>
+                        <button onclick="deleteGame(event, ${game.id})" class="text-2xl hover:scale-125 transition">🗑️</button>
                     </div>
-                </div>
-                <div class="flex justify-between p-2 glass border-none">
-                    <button onclick="toggleFav(event, ${game.id})" class="hover:scale-120 transition">⭐</button>
-                    <button onclick="deleteGame(event, ${game.id})" class="text-red-500 opacity-50 hover:opacity-100">×</button>
+                    <div class="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent">
+                        <div class="text-[8px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1">${game.system}</div>
+                        <div class="text-[11px] font-bold truncate tracking-wide">${game.title}</div>
+                    </div>
                 </div>
             `;
             card.onclick = () => startEmulator(game.id);
@@ -264,56 +215,40 @@
         });
     }
 
-    async function toggleFav(e, id) {
-        e.stopPropagation();
-        const game = await db.games.get(id);
-        await db.games.update(id, { isFavorite: game.isFavorite ? 0 : 1 });
-        renderGames();
+    async function toggleFav(e, id) { e.stopPropagation(); const g = await db.games.get(id); await db.games.update(id, {isFavorite: g.isFavorite ? 0 : 1}); renderGames(); }
+    async function deleteGame(e, id) { e.stopPropagation(); if(confirm("Удалить навсегда?")) { await db.games.delete(id); renderGames(); } }
+    
+    async function startNetplay(e, id) { 
+        e.stopPropagation(); 
+        const room = Math.random().toString(36).substring(7);
+        const url = new URL(window.location);
+        url.searchParams.set('room', room);
+        url.searchParams.set('gameId', id);
+        window.history.pushState({}, '', url);
+        startEmulator(id);
     }
 
-    async function deleteGame(e, id) {
-        e.stopPropagation();
-        if(confirm("Удалить?")) { await db.games.delete(id); renderGames(); }
-    }
+    function shareNetplay() { navigator.clipboard.writeText(window.location.href); alert("Ссылка на онлайн-комнату скопирована!"); }
 
-    // Поиск
-    function searchGames() {
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        const cards = document.querySelectorAll('.game-card');
-        cards.forEach(card => {
-            const title = card.innerText.toLowerCase();
-            card.style.display = title.includes(query) ? 'block' : 'none';
-        });
-    }
-
-    // Экспорт (Облачное сохранение)
-    async function exportLibrary() {
-        const games = await db.games.toArray();
-        const data = JSON.stringify(games);
-        const blob = new Blob([data], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `retro_station_backup_${new Date().toLocaleDateString()}.json`;
-        a.click();
-        alert("Бэкап создан! Сохраните этот файл в облако. Чтобы восстановить — просто перетащите его на кнопку 'Добавить'.");
-    }
-
-    // Запуск Эмулятора
-    async function startEmulator(gameId) {
-        const game = await db.games.get(gameId);
+    async function startEmulator(id) {
+        const game = await db.games.get(parseInt(id));
         document.getElementById('emulator-container').style.display = 'block';
-        
+        const romUrl = URL.createObjectURL(game.romBlob);
+
         window.EJS_player = '#game';
-        window.EJS_gameUrl = URL.createObjectURL(game.romBlob);
+        window.EJS_gameUrl = romUrl;
         window.EJS_core = game.system;
         window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/';
         window.EJS_startOnLoad = true;
-        
-        if (/Android|iPhone|iPad/i.test(navigator.userAgent)) window.EJS_browserMode = 'mobile';
-        
-        window.EJS_buttons = { l: true, r: true, l2: true, r2: true, l3: true, r3: true, leftStick: true, rightStick: true, select: true, start: true };
+        window.EJS_settings = { rewind: true, cheats: true };
 
+        if (netplayRoom) {
+            window.EJS_netplayServer = 'wss://netplay.emulatorjs.org:443';
+            window.EJS_netplayRoom = netplayRoom;
+            document.getElementById('netplay-share-btn').classList.remove('hidden');
+        }
+
+        if (/Android|iPhone|iPad/i.test(navigator.userAgent)) window.EJS_browserMode = 'mobile';
         if (game.system === 'psx' || game.system === 'play') {
             const bios = await db.config.get('ps_bios');
             if (bios) window.EJS_biosUrl = URL.createObjectURL(bios.blob);
@@ -326,27 +261,12 @@
         document.body.appendChild(script);
     }
 
-    function stopEmulator() { location.reload(); }
-    function toggleFullScreen() {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-        else document.exitFullscreen();
-    }
+    function stopEmulator() { window.location.href = window.location.pathname; }
+    function searchGames() { const q = document.getElementById('searchInput').value.toLowerCase(); document.querySelectorAll('.game-card').forEach(c => c.style.display = c.innerText.toLowerCase().includes(q) ? 'block' : 'none'); }
+    async function exportLibrary() { const g = await db.games.toArray(); const blob = new Blob([JSON.stringify(g)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_${Date.now()}.json`; a.click(); }
 
-    initParticles();
-    animateBackground();
-    renderGames();
-    window.addEventListener('resize', initParticles);
+    initParticles(); animateBackground(); renderGames();
+    if (netplayRoom) { const gId = new URLSearchParams(window.location.search).get('gameId'); if(gId) setTimeout(() => startEmulator(gId), 1500); }
 </script>
-
-<!-- Стили кнопок PS1 перенесены из прошлой версии -->
-<style>
-    .is-psx [data-button]::after { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: white !important; font-size: 22px; visibility: visible; font-weight: bold; }
-    .is-psx [data-button="a"]::after { content: "✖"; color: #88aaff !important; }
-    .is-psx [data-button="b"]::after { content: "●"; color: #ff8888 !important; }
-    .is-psx [data-button="x"]::after { content: "■"; color: #ffcc88 !important; }
-    .is-psx [data-button="y"]::after { content: "▲"; color: #88ff88 !important; }
-    .is-psx [data-button] { color: transparent !important; }
-</style>
-
 </body>
 </html>
