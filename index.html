@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>RetroStation Ultimate X</title>
+    <title>RetroStation: Global PC & Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
@@ -30,27 +30,24 @@
 
         #emulator-container { display: none; position: fixed; inset: 0; z-index: 9999; background: #000; }
 
-        /* --- PLAYSTATION UI FIX --- */
+        /* --- SONY UI FIX (PlayStation Layout) --- */
         .is-psx [data-button], .is-ps2 [data-button] { color: transparent !important; position: relative; }
         .is-psx [data-button]::after, .is-ps2 [data-button]::after {
             position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; 
             color: white !important; font-size: 22px; visibility: visible; font-weight: bold;
         }
-
         .is-psx [data-button="a"]::after, .is-ps2 [data-button="a"]::after { content: "✖"; color: #88aaff !important; }
         .is-psx [data-button="b"]::after, .is-ps2 [data-button="b"]::after { content: "●"; color: #ff8888 !important; }
         .is-psx [data-button="x"]::after, .is-ps2 [data-button="x"]::after { content: "■"; color: #ffcc88 !important; }
         .is-psx [data-button="y"]::after, .is-ps2 [data-button="y"]::after { content: "▲"; color: #88ff88 !important; }
-
+        
         .is-psx [data-button="l"]::after, .is-ps2 [data-button="l"]::after { content: "L1"; font-size: 14px; }
         .is-psx [data-button="r"]::after, .is-ps2 [data-button="r"]::after { content: "R1"; font-size: 14px; }
         .is-psx [data-button="l2"]::after, .is-ps2 [data-button="l2"]::after { content: "L2"; font-size: 14px; }
         .is-psx [data-button="r2"]::after, .is-ps2 [data-button="r2"]::after { content: "R2"; font-size: 14px; }
 
         .is-psx [data-button="l2"], .is-psx [data-button="r2"],
-        .is-ps2 [data-button="l2"], .is-ps2 [data-button="r2"] { 
-            display: flex !important; visibility: visible !important; opacity: 1 !important; 
-        }
+        .is-ps2 [data-button="l2"], .is-ps2 [data-button="r2"] { display: flex !important; visibility: visible !important; opacity: 1 !important; }
 
         .emu-ui { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; z-index: 10000; pointer-events: none; }
         .emu-ui button { pointer-events: auto; background: rgba(0,0,0,0.6); color: white; padding: 8px 15px; border-radius: 10px; font-size: 11px; font-weight: bold; }
@@ -65,41 +62,36 @@
     <header class="flex flex-col md:flex-row justify-between items-center gap-6 mb-10 text-center md:text-left">
         <div>
             <h1 class="text-4xl font-brand italic text-blue-500 tracking-tighter uppercase leading-none">Retro Station</h1>
-            <p id="bios-status" class="text-[9px] text-red-500 font-bold mt-1 uppercase">BIOS НЕ УСТАНОВЛЕН</p>
+            <p id="device-status" class="text-[9px] text-blue-300 font-bold mt-1 uppercase opacity-60">Honor Optimization: On</p>
         </div>
         <div class="flex flex-wrap gap-2 justify-center">
-            <button onclick="toggleFullScreen()" class="glass px-4 py-3 rounded-xl text-xs font-bold uppercase">Экран</button>
-            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 px-6 py-3 rounded-xl font-black text-sm shadow-lg active:scale-95 transition">+ ИГРЫ</button>
-            <button onclick="document.getElementById('biosInput').click()" class="glass px-4 py-3 rounded-xl text-xs uppercase">BIOS</button>
+            <button onclick="toggleFullScreen()" class="glass px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-white">Экран</button>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 px-6 py-3 rounded-xl font-black text-sm shadow-lg active:scale-95 transition">+ ДОБАВИТЬ</button>
+            <button onclick="document.getElementById('biosInput').click()" class="glass px-4 py-3 rounded-xl text-xs uppercase italic">BIOS</button>
         </div>
     </header>
 
     <!-- Фильтры -->
     <div class="flex gap-4 overflow-x-auto no-scrollbar pb-8 mb-4 items-start">
-        <button onclick="filterSystem('all', this)" class="filter-btn active-filter glass px-6 py-2 rounded-full text-xs font-bold uppercase">Все</button>
+        <button onclick="filterSystem('all', this)" class="filter-btn active-filter glass px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest text-white">Все</button>
         
-        <!-- Xbox Original (Updated) -->
+        <button onclick="filterSystem('hl', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-orange-400 uppercase italic">Half-Life</button>
+        <button onclick="filterSystem('cs', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-yellow-400 uppercase italic">CS</button>
+        <button onclick="filterSystem('pc', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-blue-300 uppercase italic">PC Classic</button>
+
         <div class="flex flex-col items-center gap-1">
-            <button onclick="alert('Эмуляция Xbox Original в разработке и скоро появится!')" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-green-500 uppercase italic">Xbox Original</button>
-            <span class="text-[7px] text-red-500 font-bold uppercase whitespace-nowrap tracking-widest">В разработке / Скоро</span>
+            <button onclick="filterSystem('ps2', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-blue-400 uppercase italic">PS2</button>
+            <span class="text-[7px] text-red-500 font-bold uppercase">PC Only</span>
         </div>
 
-        <!-- PS2 -->
-        <div class="flex flex-col items-center gap-1">
-            <button onclick="filterSystem('ps2', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-blue-400 uppercase italic">PlayStation 2</button>
-            <span class="text-[7px] text-red-500 font-bold uppercase whitespace-nowrap tracking-widest">Exp. Только PC</span>
-        </div>
-
-        <button onclick="filterSystem('psx', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-indigo-400 uppercase italic">PS1</button>
+        <button onclick="filterSystem('psx', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-indigo-400 uppercase italic text-white">PS1</button>
+        <button onclick="filterSystem('gba', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-green-400 uppercase text-white">GBA</button>
         <button onclick="filterSystem('snes', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-red-500 uppercase">SNES</button>
-        <button onclick="filterSystem('gba', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-green-400 uppercase">GBA</button>
-        <button onclick="filterSystem('gbc', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-yellow-400 uppercase">GBC</button>
-        <button onclick="filterSystem('gb', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-emerald-400 uppercase">GB</button>
-        <button onclick="filterSystem('segaMD', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-blue-300 uppercase">SEGA</button>
-        <button onclick="filterSystem('nes', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold uppercase">NES</button>
-        <button onclick="filterSystem('dos', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-orange-400 uppercase">DOS</button>
-        <button onclick="filterSystem('mame', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-yellow-500 uppercase">MAME</button>
-        <button onclick="filterSystem('n64', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-red-400 uppercase">N64</button>
+        
+        <div class="flex flex-col items-center gap-1 opacity-40">
+            <button class="glass px-6 py-2 rounded-full text-xs font-bold text-green-500 uppercase italic cursor-not-allowed">Xbox</button>
+            <span class="text-[7px] text-red-500 font-bold uppercase">Soon</span>
+        </div>
     </div>
 
     <div id="game-grid"></div>
@@ -108,7 +100,7 @@
 <div id="emulator-container">
     <div class="emu-ui">
         <button onclick="stopEmulator()" style="color: #ff4d4d;">ВЫЙТИ</button>
-        <button onclick="alert('✖, ●, ■, ▲ и L1-R2 активны.')">ИНФО</button>
+        <button id="engine-info" class="hidden" onclick="alert('Для игр Valve/PC:\nВыберите ZIP файл внутри окна движка.')">INFO</button>
     </div>
     <div id="game" style="width:100%; height:100%;"></div>
 </div>
@@ -117,32 +109,43 @@
 <input type="file" id="biosInput" class="hidden" onchange="addBios(event)">
 
 <script>
-    const db = new Dexie("UltimateConsoleDB");
+    const db = new Dexie("RetroMasterStore");
     db.version(1).stores({ games: '++id, title, system, romBlob', config: 'name, blob' });
+
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0);
+    document.getElementById('device-status').innerText = isMobile ? "Mode: Honor/Mobile" : "Mode: Desktop/Keyboard";
 
     const systemMap = {
         'nes': 'nes', 'snes': 'snes', 'sfc': 'snes', 'smc': 'snes',
         'md': 'segaMD', 'gen': 'segaMD', 'bin': 'psx', 'chd': 'psx', 
         'cue': 'psx', 'gba': 'gba', 'gb': 'gb', 'gbc': 'gbc',
-        'n64': 'n64', 'z64': 'n64', 'zip': 'mame', 'exe': 'dos'
+        'n64': 'n64', 'zip': 'mame', 'exe': 'dos'
     };
 
     async function renderGames(filter = 'all') {
         const grid = document.getElementById('game-grid');
         grid.innerHTML = '';
         const games = await db.games.toArray();
-        const filtered = filter === 'all' ? games : (filter === 'ps2' ? games.filter(g => g.system === 'play') : games.filter(g => g.system === filter));
+        
+        const filtered = games.filter(g => {
+            if (filter === 'all') return true;
+            if (filter === 'cs') return g.system === 'cs16' || g.system === 'cscz';
+            if (filter === 'hl') return ['hl1', 'opfor', 'bshift', 'decay', 'tfc'].includes(g.system);
+            if (filter === 'pc') return ['doom', 'quake', 'dos'].includes(g.system);
+            if (filter === 'ps2') return g.system === 'play';
+            return g.system === filter;
+        });
 
         filtered.forEach(game => {
             const card = document.createElement('div');
-            card.className = 'game-card';
+            card.className = 'game-card shadow-lg';
             card.innerHTML = `
                 <div class="delete-btn" onclick="deleteGame(event, ${game.id})">×</div>
                 <div onclick="startEmulator(${game.id})">
-                    <div class="cover-art">${game.title}</div>
-                    <div class="p-3 text-center">
-                        <div class="text-[9px] text-blue-400 font-black uppercase tracking-widest">${game.system === 'play' ? 'ps2' : game.system}</div>
-                        <div class="truncate text-xs font-bold opacity-80 uppercase italic text-slate-300">${game.title}</div>
+                    <div class="cover-art font-bold">${game.title}</div>
+                    <div class="p-3 text-center uppercase">
+                        <div class="text-[9px] text-blue-400 font-black">${game.system.toUpperCase().replace('PLAY','PS2')}</div>
+                        <div class="truncate text-xs font-bold text-slate-300 italic">${game.title}</div>
                     </div>
                 </div>
             `;
@@ -154,51 +157,48 @@
         for (const file of event.target.files) {
             const ext = file.name.split('.').pop().toLowerCase();
             let system = systemMap[ext] || 'nes';
-            if (ext === 'iso') {
-                system = confirm(`Это игра для PlayStation 2?`) ? 'play' : 'psx';
+            
+            if (ext === 'zip') {
+                const q = "Что это?\n1: Half-Life/Mods (HL, OpFor, TF Classic)\n2: CS (1.6, CZ)\n3: PC Classic (Doom, Quake)\n4: MAME/Arcade";
+                const c = prompt(q, "1");
+                if (c === "1") system = "hl1";
+                else if (c === "2") system = "cs16";
+                else if (c === "3") system = "quake";
+                else system = "mame";
+            } else if (ext === 'iso') {
+                system = confirm("PlayStation 2?") ? 'play' : 'psx';
             }
             await db.games.add({ title: file.name.replace(/\.[^/.]+$/, ""), system, romBlob: file });
         }
         renderGames();
     }
 
-    async function deleteGame(e, id) {
-        e.stopPropagation();
-        if(confirm("Удалить игру?")) { await db.games.delete(id); renderGames(); }
-    }
-
-    async function addBios(event) {
-        if (event.target.files[0]) {
-            await db.config.put({ name: 'ps_bios', blob: event.target.files[0] });
-            location.reload();
-        }
-    }
-
-    function toggleFullScreen() {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-        else document.exitFullscreen();
-    }
-
     async function startEmulator(gameId) {
         const game = await db.games.get(gameId);
         const container = document.getElementById('emulator-container');
+        const infoBtn = document.getElementById('engine-info');
+        
         container.classList.remove('is-psx', 'is-ps2');
+        infoBtn.classList.add('hidden');
         if (game.system === 'psx') container.classList.add('is-psx');
         if (game.system === 'play') container.classList.add('is-ps2');
         container.style.display = 'block';
-        
+
+        // Xash3D for Valve & PC Ports
+        if (['hl1', 'cs16', 'cscz', 'tfc', 'quake', 'doom'].includes(game.system)) {
+            infoBtn.classList.remove('hidden');
+            document.getElementById('game').innerHTML = `<iframe src="https://xash.smcc.ru/live/" style="width:100%;height:100%;border:none;"></iframe>`;
+            return;
+        }
+
         window.EJS_player = '#game';
         window.EJS_gameUrl = URL.createObjectURL(game.romBlob);
         window.EJS_core = game.system;
         window.EJS_pathtodata = 'https://rawcdn.githack.com/EmulatorJS/EmulatorJS/main/data/';
         window.EJS_startOnLoad = true;
-
-        window.EJS_buttons = {
-            l: true, r: true, l2: true, r2: true,
-            l3: true, r3: true,
-            leftStick: true, rightStick: true,
-            select: true, start: true
-        };
+        if (isMobile) window.EJS_browserMode = 'mobile';
+        
+        window.EJS_buttons = { l: true, r: true, l2: true, r2: true, l3: true, r3: true, leftStick: true, rightStick: true, select: true, start: true };
 
         if (game.system === 'psx' || game.system === 'play') {
             const bios = await db.config.get('ps_bios');
@@ -211,17 +211,15 @@
         document.body.appendChild(script);
     }
 
+    async function deleteGame(e, id) { e.stopPropagation(); if(confirm("Удалить?")) { await db.games.delete(id); renderGames(); } }
+    async function addBios(event) { if (event.target.files[0]) { await db.config.put({ name: 'ps_bios', blob: event.target.files[0] }); location.reload(); } }
     function stopEmulator() { location.reload(); }
+    function toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
     function filterSystem(sys, btn) {
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active-filter'));
         btn.classList.add('active-filter');
         renderGames(sys);
     }
-
-    db.config.get('ps_bios').then(bios => {
-        if(bios) document.getElementById('bios-status').innerHTML = "🟢 PS BIOS READY";
-    });
-
     renderGames();
 </script>
 
