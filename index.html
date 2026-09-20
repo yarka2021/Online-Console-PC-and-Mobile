@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>RetroStation Ultimate</title>
+    <title>RetroStation Ultimate Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
@@ -79,18 +79,22 @@
     <div class="flex gap-4 overflow-x-auto no-scrollbar pb-8 mb-4 items-start">
         <button onclick="filterSystem('all', this)" class="filter-btn active-filter glass px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest">Все</button>
         
-        <!-- Группа PS2 с красной надписью -->
+        <!-- Группа PS2 -->
         <div class="flex flex-col items-center gap-1">
             <button onclick="filterSystem('ps2', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-blue-400 uppercase tracking-widest italic">PlayStation 2</button>
             <span class="text-[8px] text-red-500 font-bold uppercase whitespace-nowrap tracking-tighter">Экспериментально. Только для PC</span>
         </div>
 
         <button onclick="filterSystem('psx', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-indigo-400 uppercase tracking-widest italic">PS1</button>
+        <button onclick="filterSystem('snes', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-red-500 uppercase tracking-widest">SNES</button>
+        <button onclick="filterSystem('gba', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-green-400 uppercase tracking-widest">GBA</button>
+        <button onclick="filterSystem('gbc', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-yellow-400 uppercase tracking-widest">GB Color</button>
+        <button onclick="filterSystem('gb', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-emerald-400 uppercase tracking-widest">Game Boy</button>
+        <button onclick="filterSystem('segaMD', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-blue-300 uppercase tracking-widest">SEGA</button>
+        <button onclick="filterSystem('nes', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest">NES</button>
         <button onclick="filterSystem('dos', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-orange-400 uppercase tracking-widest">DOS</button>
         <button onclick="filterSystem('mame', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-yellow-500 uppercase tracking-widest font-brand">MAME</button>
         <button onclick="filterSystem('n64', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-red-400 uppercase tracking-widest">N64</button>
-        <button onclick="filterSystem('gba', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold text-green-400 uppercase tracking-widest">GBA</button>
-        <button onclick="filterSystem('nes', this)" class="filter-btn glass px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest">NES</button>
     </div>
 
     <div id="game-grid"></div>
@@ -104,7 +108,7 @@
     <div id="game" style="width:100%; height:100%;"></div>
 </div>
 
-<input type="file" id="fileInput" class="hidden" multiple accept=".nes,.snes,.gba,.md,.bin,.cue,.chd,.iso,.n64,.zip,.exe" onchange="addGames(event)">
+<input type="file" id="fileInput" class="hidden" multiple accept=".nes,.snes,.sfc,.smc,.gba,.gb,.gbc,.md,.gen,.bin,.cue,.chd,.iso,.n64,.zip,.exe" onchange="addGames(event)">
 <input type="file" id="biosInput" class="hidden" onchange="addBios(event)">
 
 <script>
@@ -112,109 +116,13 @@
     db.version(1).stores({ games: '++id, title, system, romBlob', config: 'name, blob' });
 
     const systemMap = {
-        'nes': 'nes', 'snes': 'snes', 'md': 'segaMD', 'bin': 'psx', 'chd': 'psx', 
-        'cue': 'psx', 'gba': 'gba', 'n64': 'n64', 'zip': 'mame', 'exe': 'dos'
+        'nes': 'nes', 'snes': 'snes', 'sfc': 'snes', 'smc': 'snes',
+        'md': 'segaMD', 'gen': 'segaMD', 'bin': 'psx', 'chd': 'psx', 
+        'cue': 'psx', 'gba': 'gba', 'gb': 'gb', 'gbc': 'gbc',
+        'n64': 'n64', 'z64': 'n64', 'zip': 'mame', 'exe': 'dos'
     };
 
     async function renderGames(filter = 'all') {
         const grid = document.getElementById('game-grid');
         grid.innerHTML = '';
-        const games = await db.games.toArray();
-        const filtered = filter === 'all' ? games : (filter === 'play' ? games.filter(g => g.system === 'play') : games.filter(g => g.system === filter));
-
-        filtered.forEach(game => {
-            const card = document.createElement('div');
-            card.className = 'game-card';
-            card.innerHTML = `
-                <div class="delete-btn shadow-lg" onclick="deleteGame(event, ${game.id})">×</div>
-                <div onclick="startEmulator(${game.id})">
-                    <div class="cover-art">${game.title}</div>
-                    <div class="p-3 text-center">
-                        <div class="text-[9px] text-blue-400 font-black uppercase tracking-widest">${game.system === 'play' ? 'ps2' : game.system}</div>
-                        <div class="truncate text-xs font-bold opacity-80 uppercase italic">${game.title}</div>
-                    </div>
-                </div>
-            `;
-            grid.appendChild(card);
-        });
-    }
-
-    async function addGames(event) {
-        for (const file of event.target.files) {
-            const ext = file.name.split('.').pop().toLowerCase();
-            let system = systemMap[ext] || 'nes';
-            if (ext === 'iso') {
-                system = confirm(`Это игра для PlayStation 2?`) ? 'play' : 'psx';
-            }
-            await db.games.add({ title: file.name.replace(/\.[^/.]+$/, ""), system, romBlob: file });
-        }
-        renderGames();
-    }
-
-    async function deleteGame(e, id) {
-        e.stopPropagation();
-        if(confirm("Удалить игру?")) { await db.games.delete(id); renderGames(); }
-    }
-
-    async function addBios(event) {
-        if (event.target.files[0]) {
-            await db.config.put({ name: 'ps_bios', blob: event.target.files[0] });
-            location.reload();
-        }
-    }
-
-    function toggleFullScreen() {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-        else document.exitFullscreen();
-    }
-
-    async function startEmulator(gameId) {
-        const game = await db.games.get(gameId);
-        const container = document.getElementById('emulator-container');
-        
-        container.classList.remove('is-psx', 'is-ps2');
-        if (game.system === 'psx') container.classList.add('is-psx');
-        if (game.system === 'play') container.classList.add('is-ps2');
-
-        container.style.display = 'block';
-        
-        window.EJS_player = '#game';
-        window.EJS_gameUrl = URL.createObjectURL(game.romBlob);
-        window.EJS_core = game.system;
-        window.EJS_pathtodata = 'https://rawcdn.githack.com/EmulatorJS/EmulatorJS/main/data/';
-        window.EJS_startOnLoad = true;
-
-        window.EJS_buttons = {
-            l: true, r: true, l2: true, r2: true,
-            l3: true, r3: true,
-            leftStick: true, rightStick: true,
-            select: true, start: true
-        };
-
-        if (game.system === 'psx' || game.system === 'play') {
-            const bios = await db.config.get('ps_bios');
-            if (bios) window.EJS_biosUrl = URL.createObjectURL(bios.blob);
-            window.EJS_defaultControllerType = 5; 
-        }
-
-        const script = document.createElement('script');
-        script.src = 'https://rawcdn.githack.com/EmulatorJS/EmulatorJS/main/data/loader.js';
-        document.body.appendChild(script);
-    }
-
-    function stopEmulator() { location.reload(); }
-    function filterSystem(sys, btn) {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active-filter'));
-        btn.classList.add('active-filter');
-        renderGames(sys === 'ps2' ? 'play' : sys);
-    }
-
-    db.config.get('ps_bios').then(bios => {
-        if(bios) document.getElementById('bios-status').innerHTML = "🟢 PS BIOS READY";
-    });
-
-    renderGames();
-</script>
-
-</body>
-</html>
+        const 
