@@ -2,192 +2,174 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>N64 Ultra Station</title>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pro Console Emu + PS1 BIOS Support</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
-        :root {
-            --neon-blue: #00f2ff;
-            --neon-purple: #bc13fe;
-            --bg-dark: #050507;
-        }
-
-        body {
-            margin: 0;
-            background-color: var(--bg-dark);
-            color: white;
-            font-family: 'Orbitron', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-
-        /* Анимированный фон */
-        .grid-bg {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: 
-                linear-gradient(rgba(188, 19, 254, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(188, 19, 254, 0.1) 1px, transparent 1px);
-            background-size: 40px 40px;
-            perspective: 500px;
-            transform: rotateX(60deg);
-            z-index: -1;
-            animation: move 2s linear infinite;
-        }
-
-        @keyframes move {
-            from { background-position: 0 0; }
-            to { background-position: 0 40px; }
-        }
-
-        .container {
-            width: 800px;
-            max-width: 95vw;
-            text-align: center;
-            z-index: 1;
-        }
-
-        h1 {
-            font-family: 'Press Start 2P', cursive;
-            font-size: 1.2rem;
-            color: var(--neon-blue);
-            text-shadow: 0 0 15px var(--neon-blue);
-            margin-bottom: 20px;
-        }
-
-        #game-wrapper {
-            width: 100%;
-            aspect-ratio: 4 / 3;
-            background: #000;
-            border: 3px solid var(--neon-purple);
-            box-shadow: 0 0 30px rgba(188, 19, 254, 0.4);
-            border-radius: 10px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Стиль загрузки */
-        #loader-info {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #333;
-            border-top: 5px solid var(--neon-blue);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .btn-select {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 15px 30px;
-            background: transparent;
-            border: 2px solid var(--neon-blue);
-            color: var(--neon-blue);
-            text-transform: uppercase;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-            border-radius: 5px;
-        }
-
-        .btn-select:hover {
-            background: var(--neon-blue);
-            color: #000;
-            box-shadow: 0 0 20px var(--neon-blue);
-        }
-
-        input[type="file"] { display: none; }
-
-        .footer-info {
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: #666;
-        }
+        body { background: #0f172a; color: white; font-family: sans-serif; margin: 0; overflow-x: hidden; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .game-card { transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid transparent; }
+        .game-card:hover { transform: translateY(-5px); border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        #emulator-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; background: black; }
+        .btn-exit { position: absolute; top: 10px; left: 10px; z-index: 1001; background: #ef4444; color: white; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .status-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-    <div class="grid-bg"></div>
-
-    <div class="container">
-        <h1>N64 RETRO ENGINE</h1>
-
-        <div id="game-wrapper">
-            <div id="loader-info">
-                <div class="spinner"></div>
-                <p>Загрузка ядра N64... подождите</p>
-            </div>
-            
-            <div id="emulator" style="width: 100%; height: 100%;">
-                <div style="padding-top: 20%; color: #444;">Выберите файл .z64 или .n64 для начала</div>
+<div id="ui-layer" class="p-4 md:p-8">
+    <header class="flex flex-col md:flex-row justify-between items-center gap-6 mb-10">
+        <div>
+            <h1 class="text-4xl font-black tracking-tighter bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">ULTIMATE EMU</h1>
+            <div class="flex items-center gap-2 mt-1">
+                <span id="bios-status" class="status-badge bg-red-500/20 text-red-400 border border-red-500/50 text-[10px]">BIOS PS1 НЕ УСТАНОВЛЕН</span>
             </div>
         </div>
-
-        <label class="btn-select">
-            Открыть ROM файл
-            <input type="file" id="file-input" accept=".n64,.z64,.v64">
-        </label>
-
-        <div class="footer-info">
-            Управление: Стрелки - Стик | X, C - A, B | Z - Z-Trigger | Enter - Start
+        
+        <div class="flex flex-wrap gap-3">
+            <button onclick="document.getElementById('biosInput').click()" class="glass hover:bg-white/10 px-4 py-2 rounded-xl text-sm transition">
+                ⚙️ Установить BIOS
+            </button>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-xl font-bold transition shadow-lg shadow-blue-500/20">
+                + Добавить игру
+            </button>
         </div>
+        
+        <input type="file" id="fileInput" class="hidden" accept=".nes,.snes,.gba,.gb,.gbc,.md,.bin,.n64,.z64,.chd" onchange="addGame(event)">
+        <input type="file" id="biosInput" class="hidden" accept=".bin" onchange="addBios(event)">
+    </header>
+
+    <!-- Фильтры -->
+    <div class="flex gap-2 mb-8 overflow-x-auto pb-4 no-scrollbar">
+        <button onclick="renderGames('all')" class="glass px-6 py-2 rounded-full text-sm hover:bg-blue-500 transition">Все</button>
+        <button onclick="renderGames('psx')" class="glass px-6 py-2 rounded-full text-sm border-blue-500/30 text-blue-300">PlayStation</button>
+        <button onclick="renderGames('n64')" class="glass px-6 py-2 rounded-full text-sm border-red-500/30 text-red-300">N64</button>
+        <button onclick="renderGames('gba')" class="glass px-6 py-2 rounded-full text-sm">GBA</button>
+        <button onclick="renderGames('segaMD')" class="glass px-6 py-2 rounded-full text-sm">Sega</button>
     </div>
 
-    <!-- Загружаем основной скрипт эмулятора -->
-    <script>
-        const fileInput = document.getElementById('file-input');
-        const loader = document.getElementById('loader-info');
-        const emuDiv = document.getElementById('emulator');
+    <!-- Сетка игр -->
+    <div id="game-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6"></div>
+</div>
 
-        fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+<div id="emulator-container">
+    <div class="btn-exit" onclick="stopEmulator()">ВЫХОД</div>
+    <div id="game" style="width:100%; height:100%;"></div>
+</div>
 
-            // Показываем лоадер
-            loader.style.display = 'flex';
-            emuDiv.innerHTML = ''; // Очищаем контейнер
+<script>
+    // Инициализация БД
+    const db = new Dexie("RetroConsoleDB");
+    db.version(2).stores({
+        games: '++id, title, system, romBlob, cover',
+        system: 'name, blob' // Для хранения BIOS
+    });
 
-            // Настройки EmulatorJS
-            window.EJS_player = '#emulator';
-            window.EJS_core = 'n64'; 
-            window.EJS_gameName = file.name;
-            window.EJS_startOnLoaded = true;
+    const systemMap = {
+        'nes': 'nes', 'gba': 'gba', 'snes': 'snes', 'gb': 'gb', 
+        'gbc': 'gbc', 'md': 'segaMD', 'bin': 'psx', 'n64': 'n64', 
+        'z64': 'n64', 'chd': 'psx'
+    };
+
+    // Проверка BIOS при загрузке
+    async function checkBios() {
+        const bios = await db.system.get('ps1_bios');
+        const badge = document.getElementById('bios-status');
+        if (bios) {
+            badge.innerText = "BIOS PS1 ГОТОВ";
+            badge.className = "status-badge bg-green-500/20 text-green-400 border border-green-500/50";
+        }
+    }
+
+    // Сохранение BIOS
+    async function addBios(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        await db.system.put({ name: 'ps1_bios', blob: file });
+        alert("BIOS успешно установлен!");
+        checkBios();
+    }
+
+    // Рендер библиотеки
+    async function renderGames(filter = 'all') {
+        const grid = document.getElementById('game-grid');
+        grid.innerHTML = '';
+        const games = await db.games.toArray();
+
+        games.forEach(game => {
+            if (filter !== 'all' && game.system !== filter) return;
             
-            // Используем официальный CDN данных EmulatorJS
-            window.EJS_pathtodata = 'https://cdn.emulatorjs.org/latest/data/';
-            
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                window.EJS_gameUrl = URL.createObjectURL(new Blob([event.target.result]));
-
-                // Динамическая загрузка лоадера
-                const script = document.createElement('script');
-                script.src = 'https://cdn.emulatorjs.org/latest/data/loader.js';
-                script.onload = () => {
-                    console.log("Эмулятор загружен");
-                    loader.style.display = 'none';
-                };
-                document.body.appendChild(script);
-            };
-            reader.readAsArrayBuffer(file);
+            const card = document.createElement('div');
+            card.className = 'game-card glass rounded-2xl overflow-hidden cursor-pointer flex flex-col';
+            card.innerHTML = `
+                <div class="relative h-48 bg-slate-800">
+                    <img src="${game.cover}" class="w-full h-full object-cover opacity-80">
+                    <div class="absolute top-2 right-2 bg-black/60 px-2 py-1 rounded text-[10px] font-bold uppercase">${game.system}</div>
+                </div>
+                <div class="p-3 text-sm font-medium truncate">${game.title}</div>
+            `;
+            card.onclick = () => startEmulator(game);
+            grid.appendChild(card);
         });
-    </script>
+    }
+
+    async function addGame(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const ext = file.name.split('.').pop().toLowerCase();
+        const system = systemMap[ext] || 'nes';
+        const title = file.name.replace(/\.[^/.]+$/, "");
+        const cover = `https://via.placeholder.com/300x400/1e293b/ffffff?text=${encodeURIComponent(title)}`;
+
+        await db.games.add({
+            title: title, system: system, romBlob: file, cover: cover
+        });
+        renderGames();
+    }
+
+    // Запуск эмулятора
+    async function startEmulator(game) {
+        document.getElementById('emulator-container').style.display = 'block';
+        document.getElementById('ui-layer').style.display = 'none';
+
+        const romUrl = URL.createObjectURL(game.romBlob);
+        
+        window.EJS_player = '#game';
+        window.EJS_gameUrl = romUrl;
+        window.EJS_core = game.system;
+        window.EJS_pathtodata = 'https://rawcdn.githack.com/EmulatorJS/EmulatorJS/main/data/';
+        
+        // Если это PS1, пытаемся подгрузить BIOS
+        if (game.system === 'psx') {
+            const biosData = await db.system.get('ps1_bios');
+            if (biosData) {
+                window.EJS_biosUrl = URL.createObjectURL(biosData.blob);
+            } else {
+                console.warn("BIOS не найден, PS1 может работать некорректно.");
+            }
+        }
+
+        window.EJS_settings = {
+            gamepad: true,
+            saveState: true,
+            loadState: true
+        };
+
+        const script = document.createElement('script');
+        script.src = 'https://rawcdn.githack.com/EmulatorJS/EmulatorJS/main/data/loader.js';
+        document.body.appendChild(script);
+    }
+
+    function stopEmulator() {
+        if(confirm("Выйти в меню?")) location.reload();
+    }
+
+    // Инициализация
+    checkBios();
+    renderGames();
+</script>
+
 </body>
 </html>
