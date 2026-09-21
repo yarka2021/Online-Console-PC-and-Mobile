@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>RetroStation: Audio Trinity</title>
+    <title>RetroStation Infinity</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
@@ -20,14 +20,12 @@
 
         body { background-color: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; transition: all 0.5s ease; }
         #bg-canvas { position: fixed; inset: 0; z-index: -1; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); }
         
-        /* Сетка игр */
         .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px; padding: 20px; }
         .game-card { aspect-ratio: 1/1; background: #111; border-radius: var(--radius); border: 3px solid transparent; transition: 0.3s cubic-bezier(0.17, 0.88, 0.32, 1.28); position: relative; overflow: hidden; }
         .game-card:hover { transform: scale(1.1); border-color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 15px var(--accent); z-index: 10; }
 
-        /* Навигация */
         .console-nav { display: flex; gap: 10px; overflow-x: auto; padding: 10px 20px; scrollbar-width: none; }
         .console-nav::-webkit-scrollbar { display: none; }
         .console-btn { padding: 8px 18px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; background: rgba(255,255,255,0.05); transition: 0.3s; border: 1px solid transparent; }
@@ -46,7 +44,7 @@
         @media (max-width: 768px) { .game-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); } }
     </style>
 </head>
-<body class="theme-ps5">
+<body class="theme-ps5" onclick="unlockAudio()">
 
 <canvas id="bg-canvas"></canvas>
 
@@ -59,9 +57,9 @@
     
     <div class="flex items-center gap-4">
         <div class="theme-selector flex gap-2 glass p-1.5 rounded-full">
-            <button onclick="changeTheme('ps5')" class="w-6 h-6 rounded-full bg-blue-600 border border-white/20"></button>
-            <button onclick="changeTheme('switch')" class="w-6 h-6 rounded-full bg-red-600 border border-white/20"></button>
-            <button onclick="changeTheme('xbox')" class="w-6 h-6 rounded-full bg-green-600 border border-white/20"></button>
+            <button onclick="changeTheme('ps5')" class="w-5 h-5 rounded-full bg-blue-600 border border-white/20"></button>
+            <button onclick="changeTheme('switch')" class="w-5 h-5 rounded-full bg-red-600 border border-white/20"></button>
+            <button onclick="changeTheme('xbox')" class="w-5 h-5 rounded-full bg-green-600 border border-white/20"></button>
         </div>
         <span id="clock" class="font-mono text-sm opacity-60">12:00</span>
     </div>
@@ -79,7 +77,6 @@
     <button onclick="setFilter('snes', this)" class="console-btn">SNES</button>
     <button onclick="setFilter('segaMD', this)" class="console-btn">Sega</button>
     <button onclick="setFilter('mame', this)" class="console-btn">MAME</button>
-    <button onclick="setFilter('dos', this)" class="console-btn">DOS</button>
 </div>
 
 <!-- Main UI -->
@@ -88,7 +85,7 @@
         <h2 id="section-title" class="text-3xl font-black uppercase italic tracking-tighter">Библиотека</h2>
         <div class="flex gap-3">
             <button onclick="exportLibrary()" class="glass w-10 h-10 rounded-full flex items-center justify-center">☁️</button>
-            <button onclick="document.getElementById('fileInput').click()" class="bg-white text-black px-8 py-2 rounded-full font-bold text-xs uppercase transition hover:scale-105 active:scale-95">+ Добавить</button>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-white text-black px-8 py-2 rounded-full font-bold text-xs uppercase">+ Добавить</button>
         </div>
     </div>
     <div id="game-grid" class="game-grid"></div>
@@ -107,29 +104,33 @@
     db.version(1).stores({ games: '++id, title, system, romBlob, isFavorite, cover', config: 'name, blob' });
 
     let currentFilter = 'all';
+    let audioUnlocked = false;
     const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
-    // --- SOUND MANAGER ---
+    // --- НАСТРОЙКА ТВОИХ ЗВУКОВ ---
+    // Убедись, что названия файлов совпадают с теми, что ты залил на GitHub
     const AudioEngine = {
-        ps5: {
-            nav: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=PlayStation+5+Menu+Sound+Effect&filename=mt/mtyzotu4OTk5MTkyOTU5_VpW_2bjH_2bi_2fI.mp3',
-            start: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=PS5+Start+Up&filename=mt/mtyzotu4OTk5MTkyOTU5_r5mUvI_2b_2fRk4.mp3'
-        },
-        switch: {
-            nav: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=Nintendo+Switch+Click&filename=m2/mtyzotkxMzcxNjM5MTU4Mw_9kP_2bg_2bnR_2bw8.mp3',
-            start: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=Nintendo+Switch+Click&filename=m2/mtyzotkxMzcxNjM5MTU4Mw_9kP_2bg_2bnR_2bw8.mp3'
-        },
-        xbox: {
-            nav: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=Xbox+One+Dashboard+Sound&filename=mt/mtyzotu4OTk5MTkyOTU5_n7_2b_2f9r_2baV_2bU.mp3',
-            start: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=Xbox+One+Start+Up&filename=mt/mtyzotu4OTk5MTkyOTU5_u9y_2bgV_2bS_2f0.mp3'
-        }
+        ps5: { nav: 'ps5_nav.mp3', start: 'ps5_start.mp3' },
+        switch: { nav: 'switch_nav.mp3', start: 'switch_start.mp3' },
+        xbox: { nav: 'xbox_nav.mp3', start: 'xbox_start.mp3' }
     };
 
+    function unlockAudio() {
+        if (audioUnlocked) return;
+        audioUnlocked = true;
+        // Проигрываем пустой звук для разблокировки
+        const silence = new Audio();
+        silence.play().catch(()=>{});
+        console.log("Audio Unlocked");
+    }
+
     function playSfx(type = 'nav') {
+        if (!audioUnlocked) return;
         const theme = document.body.className.replace('theme-', '');
-        const audio = new Audio(AudioEngine[theme][type]);
+        const file = AudioEngine[theme][type];
+        const audio = new Audio(file);
         audio.volume = 0.4;
-        audio.play().catch(() => { console.log("Sound interaction required"); });
+        audio.play().catch(e => console.error("Sound error:", e));
     }
 
     // --- Background Engine ---
@@ -176,18 +177,6 @@
     // --- Core Logic ---
     const systemMap = { 'nes':'nes', 'sfc':'snes', 'snes':'snes', 'md':'segaMD', 'bin':'psx', 'iso':'psx', 'gba':'gba', 'gb':'gb', 'gbc':'gbc', 'nds':'nds', 'zip':'mame' };
 
-    async function addGames(event) {
-        for (const file of event.target.files) {
-            const ext = file.name.split('.').pop().toLowerCase();
-            let system = systemMap[ext] || 'nes';
-            if (ext === 'iso' && file.size > 500000000) system = confirm("PlayStation 2?") ? 'play' : 'psx';
-            const title = file.name.replace(/\.[^/.]+$/, "");
-            const coverUrl = `https://raw.githubusercontent.com/libretro-thumbnails/libretro-thumbnails/master/Sony_-_PlayStation/Named_Boxarts/${encodeURIComponent(title)}.png`;
-            await db.games.add({ title, system, romBlob: file, isFavorite: 0, cover: coverUrl });
-        }
-        renderGames();
-    }
-
     async function renderGames() {
         const grid = document.getElementById('game-grid');
         grid.innerHTML = '';
@@ -210,6 +199,17 @@
         });
     }
 
+    async function addGames(event) {
+        for (const file of event.target.files) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            let system = systemMap[ext] || 'nes';
+            const title = file.name.replace(/\.[^/.]+$/, "");
+            const coverUrl = `https://raw.githubusercontent.com/libretro-thumbnails/libretro-thumbnails/master/Sony_-_PlayStation/Named_Boxarts/${encodeURIComponent(title)}.png`;
+            await db.games.add({ title, system, romBlob: file, isFavorite: 0, cover: coverUrl });
+        }
+        renderGames();
+    }
+
     async function startEmulator(id) {
         const game = await db.games.get(id);
         document.getElementById('emulator-container').style.display = 'block';
@@ -226,14 +226,12 @@
             document.getElementById('emulator-container').classList.add('is-psx');
         }
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/loader.js';
+        script.src = 'https://rawcdn.githack.com/EmulatorJS/EmulatorJS/main/data/loader.js';
         document.body.appendChild(script);
     }
 
-    // --- Helpers ---
     function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
     async function toggleFav(e, id) { e.stopPropagation(); const g = await db.games.get(id); await db.games.update(id, {isFavorite: g.isFavorite ? 0 : 1}); playSfx('nav'); renderGames(); }
-    async function deleteGame(e, id) { e.stopPropagation(); if(confirm("Удалить?")) { await db.games.delete(id); renderGames(); } }
     function stopEmulator() { location.reload(); }
     async function exportLibrary() { const g = await db.games.toArray(); const b = new Blob([JSON.stringify(g)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `backup.json`; a.click(); }
     async function addBios(event) { if (event.target.files[0]) { await db.config.put({ name: 'ps_bios', blob: event.target.files[0] }); alert("BIOS Saved"); } }
