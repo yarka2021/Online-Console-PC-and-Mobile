@@ -3,46 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>RetroStation Trinity</title>
+    <title>RetroStation: Infinity Quad-Hub</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap');
+        
         *{box-sizing:border-box; margin:0; padding:0;}
         html,body{width:100%; height:100%; overflow:hidden; font-family:'Inter', sans-serif; color:#fff;}
 
-        :root { --accent: #00439c; --bg: #07101d; --radius: 15px; }
+        /* --- ТЕМЫ --- */
         body.theme-ps5 { --accent: #00439c; --bg: #07101d; --radius: 15px; }
         body.theme-switch { --accent: #e60012; --bg: #e0e0e0; --radius: 0px; color: #333; }
         body.theme-xbox { --accent: #107c10; --bg: #001b04; --radius: 2px; }
+        body.theme-gamehub { --accent: #8b5cf6; --bg: #0f111a; --radius: 8px; }
 
         body { background: var(--bg); transition: background 0.5s ease; }
-        .ui-block { display: none; width: 100%; height: 100%; position: relative; overflow: hidden; }
+        .ui-block { display: none; width: 100%; height: 100%; position: relative; overflow-y: auto; scrollbar-width: none; }
         .active-ui { display: block !important; }
 
+        /* Эффект PS5 */
+        body.theme-ps5:before { content:""; position:fixed; inset:0; background: radial-gradient(circle at 75% 40%,rgba(40,115,190,.42),transparent 32%), linear-gradient(115deg,rgba(0,0,0,.94) 0%,rgba(0,0,0,.5) 43%,rgba(4,18,35,.2) 100%); z-index:-2; }
+
         /* ПАНЕЛЬ КОНСОЛЕЙ */
-        .console-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px 4vw; scrollbar-width: none; -webkit-overflow-scrolling: touch; position: relative; z-index: 110; }
+        .console-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px 4vw; scrollbar-width: none; position: sticky; top: 0; z-index: 110; background: inherit; }
         .c-btn { padding: 6px 14px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; white-space: nowrap; transition: 0.3s; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: inherit; flex-shrink: 0; }
-        
+        .c-btn.active { background: var(--accent); color: #fff; box-shadow: 0 0 15px var(--accent); }
+
         /* ГЕЙМПАД ФОКУС */
-        .gp-focus { outline: 4px solid white !important; outline-offset: 2px; transform: scale(1.05) !important; z-index: 100 !important; box-shadow: 0 0 20px var(--accent) !important; }
-        .c-btn.active { background: var(--accent); border-color: #fff; }
+        .gp-focus { outline: 4px solid white !important; outline-offset: 3px; transform: scale(1.05) !important; z-index: 100 !important; }
 
-        /* ЭКРАН ПОВОРОТА */
-        #rotate-overlay { display: none; position: fixed; inset: 0; background: #000; z-index: 10000; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        /* КАРТОЧКИ GAMEHUB */
+        .gh-card { aspect-ratio: 2/3; background: #1a1d2e; border-radius: var(--radius); border: 2px solid transparent; transition: 0.3s; overflow: hidden; position: relative; }
+        .theme-gamehub .gh-card:hover { border-color: var(--accent); box-shadow: 0 0 20px var(--accent); transform: translateY(-10px); }
+
+        /* ПОВОРОТ ТЕЛЕФОНА */
+        #rotate-overlay { display: none; position: fixed; inset: 0; background: #000; z-index: 10000; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         @media screen and (max-width: 900px) and (orientation: portrait) { #rotate-overlay { display: flex; } }
-
-        .tile, .game-card { cursor: pointer; transition: 0.3s cubic-bezier(0,0,0,1); overflow: hidden; background: #111; position: relative; border: 2px solid transparent; }
-        .theme-ps5 .tile { width:80px; height:80px; border-radius:12px; flex:none; }
-        .theme-ps5 .tile.selected { width:120px; height:120px; border-radius:18px; border-color: #eee; }
-        .theme-switch .game-card { min-width: 180px; width: 180px; aspect-ratio: 1/1; background: white; flex:none; }
-        .theme-switch .game-card.selected { border-color: #00edff; }
 
         #emulator-container { display: none; position: fixed; inset: 0; z-index: 9999; background: #000; }
         
-        /* Sony Symbols (Auto) */
+        /* PlayStation Symbols */
         .is-psx [data-button]::after { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: white !important; font-size: 24px; visibility: visible; font-weight: 900; }
         .is-psx [data-button="a"]::after { content: "✖"; color: #88aaff !important; }
         .is-psx [data-button="b"]::after { content: "●"; color: #ff8888 !important; }
@@ -50,81 +53,91 @@
         .is-psx [data-button="y"]::after { content: "▲"; color: #88ff88 !important; }
         .is-psx [data-button] { color: transparent !important; }
 
-        /* Хранилище (Индикатор) */
-        #storage-warning { display: none; background: #ef4444; color: white; font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        .theme-tray { position: fixed; top: 100px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 500; }
+        .theme-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; cursor: pointer; }
     </style>
 </head>
 <body class="theme-ps5" onclick="unlockAudio()">
 
 <div id="rotate-overlay">
-    <div class="phone-icon border-white border-2 w-10 h-16 rounded-md mb-4 animate-bounce"></div>
-    <h2 class="text-xl font-bold uppercase">Поверните ТВ/Телефон</h2>
+    <div class="w-10 h-16 border-2 border-white rounded-md animate-bounce mb-4"></div>
+    <p class="font-bold">ПОВЕРНИТЕ УСТРОЙСТВО</p>
 </div>
 
-<div id="ui-container">
-    <div class="fixed top-1/2 right-4 translate-y-[-50%] flex flex-col gap-4 z-[500]">
-        <div class="w-4 h-4 rounded-full bg-blue-600 border-2 border-white cursor-pointer nav-item" onclick="changeTheme('ps5')"></div>
-        <div class="w-4 h-4 rounded-full bg-red-600 border-2 border-white cursor-pointer nav-item" onclick="changeTheme('switch')"></div>
-        <div class="w-4 h-4 rounded-full bg-green-600 border-2 border-white cursor-pointer nav-item" onclick="changeTheme('xbox')"></div>
-    </div>
+<!-- ТРЕЙ ТЕМ -->
+<div class="theme-tray">
+    <div class="theme-dot bg-blue-600" onclick="changeTheme('ps5')" title="PlayStation 5"></div>
+    <div class="theme-dot bg-red-600" onclick="changeTheme('switch')" title="Nintendo Switch"></div>
+    <div class="theme-dot bg-green-600" onclick="changeTheme('xbox')" title="Xbox Series X"></div>
+    <div class="theme-dot bg-purple-600" onclick="changeTheme('gamehub')" title="GameHub (Silent)"></div>
+</div>
 
+<div id="ui-container" class="h-screen flex flex-col">
     <!-- ФИЛЬТРЫ -->
     <div class="console-bar" id="console-filters">
         <div onclick="setFilter('all', this)" class="c-btn active nav-item">Все</div>
         <div onclick="setFilter('psx', this)" class="c-btn nav-item">PS1</div>
         <div onclick="setFilter('play', this)" class="c-btn nav-item">PS2</div>
         <div onclick="setFilter('gba', this)" class="c-btn nav-item">GBA</div>
-        <div onclick="setFilter('nds', this)" class="c-btn nav-item">NDS</div>
+        <div onclick="setFilter('gbc', this)" class="c-btn nav-item">GBC</div>
+        <div onclick="setFilter('gb', this)" class="c-btn nav-item">GB</div>
         <div onclick="setFilter('nes', this)" class="c-btn nav-item">NES</div>
         <div onclick="setFilter('snes', this)" class="c-btn nav-item">SNES</div>
+        <div onclick="setFilter('segaMD', this)" class="c-btn nav-item">Sega</div>
         <div onclick="setFilter('dos', this)" class="c-btn nav-item">DOS</div>
+        <div onclick="setFilter('pce', this)" class="c-btn nav-item">PC Engine</div>
         <div onclick="setFilter('mame', this)" class="c-btn nav-item">MAME</div>
     </div>
 
     <!-- PS5 UI -->
     <div id="ps5-ui" class="ui-block active-ui">
-        <header class="flex items-center h-16 px-10 gap-8">
-            <div class="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center font-bold">PS</div>
-            <div id="storage-warning">ПАМЯТЬ ЗАПОЛНЕНА!</div>
-            <div class="ml-auto flex gap-6 text-sm items-center">
-                <button onclick="saveToUSB()" class="glass px-3 py-1 rounded-md text-[10px] font-bold nav-item">💾 СИНХРОНИЗАЦИЯ USB</button>
-                <span class="clock-text font-bold">00:00</span>
-            </div>
+        <header class="flex items-center h-20 px-10 gap-8">
+            <div class="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center font-bold">PS</div>
+            <div class="ml-auto clock-text font-bold">00:00</div>
         </header>
-        <section class="flex items-center gap-3 px-16 mt-4 overflow-x-auto no-scrollbar" id="ps5-grid">
-            <div class="tile nav-item" onclick="document.getElementById('fileInput').click()"><span class="text-2xl">+</span></div>
+        <section class="flex items-center gap-4 px-16 mt-5 overflow-x-auto no-scrollbar" id="ps5-grid">
+            <div class="w-20 h-20 bg-white/10 rounded-xl flex items-center justify-center nav-item" onclick="document.getElementById('fileInput').click()">+</div>
         </section>
-        <main class="absolute left-16 bottom-10 w-1/2">
-            <div class="text-4xl font-black uppercase tracking-tighter" id="ps5-hero-title">RETRO STATION</div>
-            <div class="text-sm opacity-50 mt-1 uppercase" id="ps5-hero-sys">System Software</div>
-            <div class="mt-6 flex items-center gap-4">
-                <button id="ps5-play-btn" class="bg-white text-black px-10 py-2 rounded-full font-black uppercase text-xs nav-item">Играть</button>
-                <span onclick="deleteActiveGame()" class="opacity-20 text-lg cursor-pointer">🗑️</span>
+        <main class="p-16">
+            <h1 class="text-5xl font-black italic uppercase" id="ps5-hero-title">Библиотека</h1>
+            <div class="mt-8 flex gap-4">
+                <button id="ps5-play-btn" class="bg-white text-black px-10 py-3 rounded-full font-bold uppercase nav-item">Играть</button>
             </div>
         </main>
     </div>
 
-    <!-- Темы Switch и Xbox (сокращено для примера, логика та же) -->
+    <!-- SWITCH UI -->
     <div id="switch-ui" class="ui-block">
-        <header class="flex justify-between items-center h-16 px-10">
-            <div class="w-10 h-10 rounded-full bg-zinc-400 border-2 border-white"></div>
-            <div class="text-zinc-800 font-bold text-sm"><span class="clock-text">00:00</span> <span class="ml-4">USB READY 💾</span></div>
+        <header class="p-10 flex justify-between items-center">
+            <div class="w-12 h-12 bg-zinc-400 rounded-full border-2 border-white"></div>
+            <div class="clock-text text-zinc-800 font-black">00:00</div>
         </header>
-        <section class="px-10 mt-2">
-            <h1 class="text-zinc-800 text-xl font-bold mb-2" id="switch-hero-title">Библиотека</h1>
-            <div class="flex gap-3 overflow-x-auto no-scrollbar" id="switch-grid"></div>
+        <section class="px-10">
+            <h2 class="text-zinc-800 text-2xl font-bold mb-4" id="switch-hero-title">Игры</h2>
+            <div class="flex gap-4 overflow-x-auto no-scrollbar" id="switch-grid"></div>
         </section>
-        <footer class="fixed bottom-0 w-full h-16 border-t-2 border-zinc-300 flex items-center justify-between px-10 bg-zinc-200">
-            <div class="flex gap-4 text-zinc-800 font-bold text-xs">
-                <div class="nav-item" onclick="saveToUSB()">💾 Flash Drive</div>
-                <div class="nav-item" id="switch-play-btn"><b>A</b> Start</div>
-            </div>
-        </footer>
+    </div>
+
+    <!-- GAMEHUB UI (SILENT START) -->
+    <div id="gamehub-ui" class="ui-block p-10">
+        <header class="flex justify-between items-center mb-10">
+            <h1 class="text-3xl font-black tracking-tighter uppercase">Game<span class="text-purple-500">Hub</span></h1>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-purple-600 px-6 py-2 rounded-lg font-bold text-sm nav-item">+ Добавить игру</button>
+        </header>
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6" id="gamehub-grid"></div>
+    </div>
+
+    <!-- XBOX UI -->
+    <div id="xbox-ui" class="ui-block p-10">
+        <div class="grid grid-cols-3 gap-6">
+            <div id="xbox-hero-slot" class="nav-item"></div>
+            <div class="grid grid-cols-3 grid-rows-2 gap-3 col-span-2" id="xbox-shortcut-grid"></div>
+        </div>
     </div>
 </div>
 
 <div id="emulator-container">
-    <button onclick="stopEmulator()" class="absolute top-4 right-4 z-[10000] glass px-4 py-2 rounded-full font-bold text-xs">EXIT</button>
+    <button onclick="stopEmulator()" class="absolute top-5 right-5 z-[10000] glass px-6 py-2 rounded-full font-bold text-xs">EXIT</button>
     <div id="game" style="width:100%; height:100%;"></div>
 </div>
 
@@ -132,11 +145,10 @@
 <input type="file" id="biosInput" class="hidden" onchange="addBios(event)">
 
 <script>
-    const db = new Dexie("RetroTVStore");
+    const db = new Dexie("RetroTrinityV5");
     db.version(1).stores({ games: '++id, title, system, romBlob, isFavorite, cover' });
 
     let currentFilter = 'all';
-    let activeGame = null;
     let audioUnlocked = false;
     let navItems = [];
     let currentNavIndex = 0;
@@ -144,93 +156,76 @@
     const AudioEngine = {
         ps5: { nav: 'ps5_nav.mp3', start: 'ps5_start.mp3' },
         switch: { nav: 'switch_nav.mp3', start: 'switch_nav.mp3' },
-        xbox: { nav: 'xbox_nav.mp3', start: 'xbox_start.mp3' }
+        xbox: { nav: 'xbox_nav.mp3', start: 'xbox_start.mp3' },
+        gamehub: { nav: 'xbox_nav.mp3', start: '' } // ПУСТОЙ СТАРТ ДЛЯ GAMEHUB
     };
 
     function unlockAudio() { audioUnlocked = true; }
-    function playSfx(type) { if (audioUnlocked) new Audio(AudioEngine[document.body.className.replace('theme-','')][type]).play().catch(()=>{}); }
-
-    // --- ПАМЯТЬ И ФЛЕШКА ---
-    async function checkStorage() {
-        if (navigator.storage && navigator.storage.estimate) {
-            const {usage, quota} = await navigator.storage.estimate();
-            const percentUsed = (usage / quota) * 100;
-            if (percentUsed > 80) {
-                document.getElementById('storage-warning').style.display = 'block';
-            }
+    function playSfx(type) { 
+        const theme = document.body.className.replace('theme-','');
+        const file = AudioEngine[theme][type];
+        if (audioUnlocked && file !== '') { 
+            new Audio(file).play().catch(()=>{}); 
         }
     }
 
-    async function saveToUSB() {
-        // Попытка использовать File System API (для новых ТВ и ПК)
-        if ('showOpenFilePicker' in window) {
-            alert("Выберите папку на вашей флешке для сохранения библиотеки.");
-        }
-        // Универсальный способ (для всех ТВ): скачать файл напрямую на флешку
-        const games = await db.games.toArray();
-        const blob = new Blob([JSON.stringify(games)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `RetroStation_USB_Backup.json`;
-        a.click();
-        alert("Бэкап создан. Если к ТВ подключена флешка, сохраните файл туда.");
-    }
+    const systemMap = { 'nes':'nes','snes':'snes','sfc':'snes','smc':'snes','gba':'gba','gbc':'gbc','gb':'gb','md':'segaMD','bin':'psx','chd':'psx','iso':'psx','nds':'nds','pce':'pce','exe':'dos','zip':'mame' };
 
-    // --- GAMEPAD ENGINE ---
-    window.addEventListener("gamepadconnected", () => gamepadLoop());
-    let lastAxisX = 0, lastAxisY = 0, lastButtonState = {};
-
-    function gamepadLoop() {
-        const gamepads = navigator.getGamepads();
-        if (!gamepads[0]) return requestAnimationFrame(gamepadLoop);
-        const gp = gamepads[0];
-        if (gp.axes[0] > 0.5 && lastAxisX <= 0.5) moveNav(1);
-        if (gp.axes[0] < -0.5 && lastAxisX >= -0.5) moveNav(-1);
-        if (gp.buttons[0].pressed && !lastButtonState[0]) navItems[currentNavIndex].click();
-        lastAxisX = gp.axes[0];
-        gp.buttons.forEach((b, i) => lastButtonState[i] = b.pressed);
-        requestAnimationFrame(gamepadLoop);
-    }
-
-    function moveNav(dir) {
-        currentNavIndex = (currentNavIndex + dir + navItems.length) % navItems.length;
-        navItems.forEach(el => el.classList.remove('gp-focus'));
-        navItems[currentNavIndex].classList.add('gp-focus');
-        navItems[currentNavIndex].scrollIntoView({ behavior: 'smooth', inline: 'center' });
-        playSfx('nav');
-    }
-
-    // --- CORE LOGIC ---
     async function addGames(event) {
         for (const file of event.target.files) {
             const ext = file.name.split('.').pop().toLowerCase();
             const title = file.name.replace(/\.[^/.]+$/, "");
-            await db.games.add({ title, system: ext, romBlob: file, isFavorite: 0, cover: "" });
+            let sys = systemMap[ext] || 'nes';
+            if(ext === 'iso' && file.size > 400000000) sys = confirm("Это PS2?") ? 'play' : 'psx';
+            if(ext === 'zip') sys = prompt("1-MAME, 2-DOS", "1") === "2" ? "dos" : "mame";
+            const coverUrl = `https://raw.githubusercontent.com/libretro-thumbnails/libretro-thumbnails/master/Sony_-_PlayStation/Named_Boxarts/${encodeURIComponent(title)}.png`;
+            await db.games.add({ title, system: sys, romBlob: file, isFavorite: 0, cover: coverUrl });
         }
-        checkStorage();
         renderGames();
     }
 
     async function renderGames() {
         const games = await db.games.toArray();
-        const grid = document.getElementById('ps5-grid');
+        const filtered = games.filter(g => currentFilter === 'all' ? true : g.system === currentFilter).reverse();
+
+        const ps5Grid = document.getElementById('ps5-grid');
         const swGrid = document.getElementById('switch-grid');
-        grid.innerHTML = '<div class="tile nav-item" onclick="document.getElementById(\'fileInput\').click()"><span class="text-2xl">+</span></div>';
-        swGrid.innerHTML = '';
+        const ghGrid = document.getElementById('gamehub-grid');
+        const xbHero = document.getElementById('xbox-hero-slot');
+        const xbShort = document.getElementById('xbox-shortcut-grid');
 
-        games.reverse().forEach((game, i) => {
-            const pCard = document.createElement('div');
-            pCard.className = `tile nav-item ${i===0?'selected':''}`;
-            pCard.innerHTML = `<span>${game.title[0]}</span>`;
+        ps5Grid.innerHTML = '<div class="w-20 h-20 bg-white/10 rounded-xl flex items-center justify-center nav-item" onclick="document.getElementById(\'fileInput\').click()">+</div>';
+        swGrid.innerHTML = ''; ghGrid.innerHTML = ''; xbHero.innerHTML = ''; xbShort.innerHTML = '';
+
+        filtered.forEach((game, i) => {
+            // PS5
+            const pCard = document.createElement('div'); pCard.className = `tile nav-item ${i===0?'selected':''}`;
+            pCard.innerHTML = `<img src="${game.cover}" onerror="this.style.display='none'">`;
             pCard.onclick = () => selectGame(game);
-            grid.appendChild(pCard);
+            ps5Grid.appendChild(pCard);
 
-            const sCard = document.createElement('div');
-            sCard.className = `game-card nav-item ${i===0?'selected':''}`;
-            sCard.innerHTML = `<div class="p-4 text-zinc-800 font-bold">${game.title}</div>`;
+            // Switch
+            const sCard = document.createElement('div'); sCard.className = `game-card nav-item ${i===0?'selected':''}`;
+            sCard.innerHTML = `<img src="${game.cover}" onerror="this.src='https://via.placeholder.com/200?text=${game.title}'">`;
             sCard.onclick = () => selectGame(game);
             swGrid.appendChild(sCard);
+
+            // GameHub (Vertical Posters)
+            const gCard = document.createElement('div'); gCard.className = `gh-card nav-item`;
+            gCard.innerHTML = `<img src="${game.cover}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/200x300?text=${game.title}'"><div class="absolute bottom-0 p-2 bg-black/80 w-full text-[9px] font-bold truncate">${game.title}</div>`;
+            gCard.onclick = () => startEmulator(game.id);
+            ghGrid.appendChild(gCard);
+
+            // Xbox
+            if(i===0) {
+                xbHero.innerHTML = `<div class="hero selected h-full"><img src="${game.cover}" class="w-full h-full object-cover"></div>`;
+                xbHero.onclick = () => startEmulator(game.id);
+            } else if(i<7) {
+                const xS = document.createElement('div'); xS.className = 'shortcut nav-item';
+                xS.innerHTML = `<img src="${game.cover}" class="w-full h-full object-cover opacity-60">`;
+                xS.onclick = () => startEmulator(game.id);
+                xbShort.appendChild(xS);
+            }
             if(i === 0) selectGame(game);
         });
         navItems = Array.from(document.querySelectorAll('.nav-item'));
@@ -238,7 +233,8 @@
 
     function selectGame(game) {
         activeGame = game;
-        document.getElementById('ps5-hero-title').innerText = game.title;
+        if(document.getElementById('ps5-hero-title')) document.getElementById('ps5-hero-title').innerText = game.title;
+        if(document.getElementById('switch-hero-title')) document.getElementById('switch-hero-title').innerText = game.title;
         document.getElementById('ps5-play-btn').onclick = () => startEmulator(game.id);
     }
 
@@ -252,7 +248,7 @@
         window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/';
         window.EJS_startOnLoad = true;
         window.EJS_browserMode = 'mobile';
-        if (game.system.includes('ps')) document.getElementById('emulator-container').classList.add('is-psx');
+        if (game.system.includes('ps') || game.system === 'play') document.getElementById('emulator-container').classList.add('is-psx');
         const script = document.createElement('script');
         script.src = 'https://rawcdn.githack.com/EmulatorJS/EmulatorJS/main/data/loader.js';
         document.body.appendChild(script);
@@ -260,23 +256,29 @@
 
     function changeTheme(theme) {
         document.body.className = 'theme-' + theme;
+        localStorage.setItem('retro-theme', theme);
         document.getElementById('ps5-ui').classList.toggle('active-ui', theme==='ps5');
         document.getElementById('switch-ui').classList.toggle('active-ui', theme==='switch');
-        playSfx('start');
+        document.getElementById('xbox-ui').classList.toggle('active-ui', theme==='xbox');
+        document.getElementById('gamehub-ui').classList.toggle('active-ui', theme==='gamehub');
+        
+        // ЕСЛИ НЕ GAMEHUB - ИГРАЕМ СТАРТ
+        if(theme !== 'gamehub') playSfx('start');
     }
 
     function setFilter(sys, btn) {
         currentFilter = sys;
         document.querySelectorAll('.c-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        playSfx('nav');
         renderGames();
     }
 
     function updateClock() { document.querySelectorAll('.clock-text').forEach(el => el.innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); }
     function stopEmulator() { location.reload(); }
-    
+
     changeTheme(localStorage.getItem('retro-theme') || 'ps5');
-    setInterval(updateClock, 1000); updateClock(); renderGames(); checkStorage();
+    setInterval(updateClock, 1000); updateClock(); renderGames();
 </script>
 </body>
 </html>
