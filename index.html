@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>RetroStation Trinity</title>
+    <title>RetroStation: Audio Trinity</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
@@ -14,77 +14,24 @@
         :root { --accent: #00439c; --bg: #000205; --radius: 12px; }
 
         /* ТЕМЫ */
-        body.theme-ps5 { --accent: #00439c; --bg: #00050f; --radius: 15px; --font: 'Inter'; }
-        body.theme-switch { --accent: #e60012; --bg: #2d2d2d; --radius: 4px; --font: 'Inter'; }
-        body.theme-xbox { --accent: #107c10; --bg: #050505; --radius: 0px; --font: 'Inter'; }
+        body.theme-ps5 { --accent: #00439c; --bg: #00050f; --radius: 15px; }
+        body.theme-switch { --accent: #e60012; --bg: #2d2d2d; --radius: 2px; }
+        body.theme-xbox { --accent: #107c10; --bg: #050505; --radius: 0px; }
 
-        body { 
-            background-color: var(--bg); 
-            color: white; 
-            font-family: var(--font), sans-serif; 
-            margin: 0; 
-            overflow-x: hidden; 
-            transition: all 0.5s ease;
-        }
-
+        body { background-color: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; transition: all 0.5s ease; }
         #bg-canvas { position: fixed; inset: 0; z-index: -1; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
         
         /* Сетка игр */
-        .game-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
-            gap: 20px; 
-            padding: 20px;
-        }
+        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px; padding: 20px; }
+        .game-card { aspect-ratio: 1/1; background: #111; border-radius: var(--radius); border: 3px solid transparent; transition: 0.3s cubic-bezier(0.17, 0.88, 0.32, 1.28); position: relative; overflow: hidden; }
+        .game-card:hover { transform: scale(1.1); border-color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 15px var(--accent); z-index: 10; }
 
-        .game-card {
-            aspect-ratio: 1/1;
-            background: #111;
-            border-radius: var(--radius);
-            border: 3px solid transparent;
-            transition: 0.3s cubic-bezier(0.17, 0.88, 0.32, 1.28);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .game-card:hover {
-            transform: scale(1.1);
-            border-color: white;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 15px var(--accent);
-            z-index: 10;
-        }
-
-        /* Панель выбора консолей */
-        .console-nav {
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            padding: 10px 20px;
-            scrollbar-width: none;
-        }
+        /* Навигация */
+        .console-nav { display: flex; gap: 10px; overflow-x: auto; padding: 10px 20px; scrollbar-width: none; }
         .console-nav::-webkit-scrollbar { display: none; }
-
-        .console-btn {
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            white-space: nowrap;
-            background: rgba(255,255,255,0.05);
-            transition: 0.3s;
-            border: 1px solid transparent;
-        }
-        .console-btn.active {
-            background: var(--accent);
-            color: white;
-            box-shadow: 0 0 15px var(--accent);
-        }
-
-        /* Статус-бар */
-        .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; }
+        .console-btn { padding: 8px 18px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; background: rgba(255,255,255,0.05); transition: 0.3s; border: 1px solid transparent; }
+        .console-btn.active { background: var(--accent); color: white; box-shadow: 0 0 15px var(--accent); }
 
         #emulator-container { display: none; position: fixed; inset: 0; z-index: 9999; background: #000; }
 
@@ -96,35 +43,32 @@
         .is-psx [data-button="y"]::after { content: "▲"; color: #88ff88 !important; }
         .is-psx [data-button] { color: transparent !important; }
 
-        @media (max-width: 768px) {
-            .game-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
-            .status-bar { padding: 15px 20px; }
-        }
+        @media (max-width: 768px) { .game-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); } }
     </style>
 </head>
 <body class="theme-ps5">
 
 <canvas id="bg-canvas"></canvas>
 
-<!-- Top Navigation -->
-<div class="status-bar">
+<!-- Top Bar -->
+<div class="flex justify-between items-center p-6 sm:p-10 relative z-10">
     <div class="flex items-center gap-4">
-        <div class="w-10 h-10 rounded-full glass flex items-center justify-center font-black">H</div>
-        <h1 id="brand-logo" class="text-lg font-bold tracking-tighter uppercase">RetroStation <span id="ver-tag">5</span></h1>
+        <div class="w-12 h-12 rounded-xl glass flex items-center justify-center font-black text-2xl border-white/20">RS</div>
+        <h1 class="text-xl font-bold tracking-tighter uppercase hidden sm:block">RetroStation <span id="ver-tag">5</span></h1>
     </div>
     
     <div class="flex items-center gap-4">
         <div class="theme-selector flex gap-2 glass p-1.5 rounded-full">
-            <button onclick="changeTheme('ps5')" class="w-5 h-5 rounded-full bg-blue-600 border border-white/20"></button>
-            <button onclick="changeTheme('switch')" class="w-5 h-5 rounded-full bg-red-600 border border-white/20"></button>
-            <button onclick="changeTheme('xbox')" class="w-5 h-5 rounded-full bg-green-600 border border-white/20"></button>
+            <button onclick="changeTheme('ps5')" class="w-6 h-6 rounded-full bg-blue-600 border border-white/20"></button>
+            <button onclick="changeTheme('switch')" class="w-6 h-6 rounded-full bg-red-600 border border-white/20"></button>
+            <button onclick="changeTheme('xbox')" class="w-6 h-6 rounded-full bg-green-600 border border-white/20"></button>
         </div>
         <span id="clock" class="font-mono text-sm opacity-60">12:00</span>
     </div>
 </div>
 
-<!-- Console Filter Bar (ВОТ ОНИ) -->
-<div class="console-nav" id="console-filters">
+<!-- Filters -->
+<div class="console-nav relative z-10" id="console-filters">
     <button onclick="setFilter('all', this)" class="console-btn active">Все</button>
     <button onclick="setFilter('favorite', this)" class="console-btn">⭐ Избранное</button>
     <button onclick="setFilter('psx', this)" class="console-btn">PS1</button>
@@ -136,26 +80,22 @@
     <button onclick="setFilter('segaMD', this)" class="console-btn">Sega</button>
     <button onclick="setFilter('mame', this)" class="console-btn">MAME</button>
     <button onclick="setFilter('dos', this)" class="console-btn">DOS</button>
-    <button onclick="setFilter('pce', this)" class="console-btn">PC Engine</button>
 </div>
 
 <!-- Main UI -->
-<div id="ui-layer" class="min-h-screen">
-    <div class="px-6 py-4 flex justify-between items-center">
-        <h2 id="section-title" class="text-2xl font-black uppercase italic tracking-widest opacity-80">Библиотека</h2>
-        <div class="flex gap-2">
-            <button onclick="exportLibrary()" class="glass px-4 py-2 rounded-full text-[10px] font-bold">BACKUP</button>
-            <button onclick="document.getElementById('fileInput').click()" class="bg-white text-black px-6 py-2 rounded-full text-[10px] font-bold uppercase">Добавить</button>
+<div id="ui-layer" class="min-h-screen relative z-10">
+    <div class="px-10 py-6 flex justify-between items-end">
+        <h2 id="section-title" class="text-3xl font-black uppercase italic tracking-tighter">Библиотека</h2>
+        <div class="flex gap-3">
+            <button onclick="exportLibrary()" class="glass w-10 h-10 rounded-full flex items-center justify-center">☁️</button>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-white text-black px-8 py-2 rounded-full font-bold text-xs uppercase transition hover:scale-105 active:scale-95">+ Добавить</button>
         </div>
     </div>
-
-    <div id="game-grid" class="game-grid">
-        <!-- Игры -->
-    </div>
+    <div id="game-grid" class="game-grid"></div>
 </div>
 
 <div id="emulator-container">
-    <button onclick="stopEmulator()" class="absolute top-5 left-5 z-[10000] glass px-6 py-2 rounded-full font-bold text-white uppercase text-xs">Выйти</button>
+    <button onclick="stopEmulator()" class="absolute top-5 left-5 z-[10000] glass px-8 py-2 rounded-full font-bold text-white uppercase text-xs">Выйти</button>
     <div id="game" style="width:100%; height:100%;"></div>
 </div>
 
@@ -163,11 +103,34 @@
 <input type="file" id="biosInput" class="hidden" onchange="addBios(event)">
 
 <script>
-    const db = new Dexie("RetroTrinityDB");
+    const db = new Dexie("RetroTrinityAudioDB");
     db.version(1).stores({ games: '++id, title, system, romBlob, isFavorite, cover', config: 'name, blob' });
 
     let currentFilter = 'all';
     const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+
+    // --- SOUND MANAGER ---
+    const AudioEngine = {
+        ps5: {
+            nav: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=PlayStation+5+Menu+Sound+Effect&filename=mt/mtyzotu4OTk5MTkyOTU5_VpW_2bjH_2bi_2fI.mp3',
+            start: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=PS5+Start+Up&filename=mt/mtyzotu4OTk5MTkyOTU5_r5mUvI_2b_2fRk4.mp3'
+        },
+        switch: {
+            nav: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=Nintendo+Switch+Click&filename=m2/mtyzotkxMzcxNjM5MTU4Mw_9kP_2bg_2bnR_2bw8.mp3',
+            start: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=Nintendo+Switch+Click&filename=m2/mtyzotkxMzcxNjM5MTU4Mw_9kP_2bg_2bnR_2bw8.mp3'
+        },
+        xbox: {
+            nav: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=Xbox+One+Dashboard+Sound&filename=mt/mtyzotu4OTk5MTkyOTU5_n7_2b_2f9r_2baV_2bU.mp3',
+            start: 'https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptitle=Xbox+One+Start+Up&filename=mt/mtyzotu4OTk5MTkyOTU5_u9y_2bgV_2bS_2f0.mp3'
+        }
+    };
+
+    function playSfx(type = 'nav') {
+        const theme = document.body.className.replace('theme-', '');
+        const audio = new Audio(AudioEngine[theme][type]);
+        audio.volume = 0.4;
+        audio.play().catch(() => { console.log("Sound interaction required"); });
+    }
 
     // --- Background Engine ---
     const canvas = document.getElementById('bg-canvas');
@@ -176,12 +139,7 @@
     function initParticles() {
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
         particles = [];
-        let count = 40;
-        for(let i=0; i<count; i++) particles.push({ 
-            x: Math.random() * canvas.width, y: Math.random() * canvas.height, 
-            size: Math.random() * 2 + 1, speedX: (Math.random()-0.5)*0.3, speedY: (Math.random()-0.5)*0.3, 
-            alpha: Math.random() 
-        });
+        for(let i=0; i<40; i++) particles.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2 + 1, speedX: (Math.random()-0.5)*0.3, speedY: (Math.random()-0.5)*0.3, alpha: Math.random() });
     }
     function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -189,7 +147,7 @@
         particles.forEach(p => {
             p.x += p.speedX; p.y += p.speedY;
             if(p.x > canvas.width) p.x = 0; if(p.y > canvas.height) p.y = 0;
-            ctx.fillStyle = theme.includes('ps5') ? `rgba(255,255,255,${p.alpha * 0.4})` : (theme.includes('xbox') ? `rgba(16, 124, 16, ${p.alpha})` : `rgba(255,255,255,0.1)`);
+            ctx.fillStyle = theme.includes('xbox') ? `rgba(16, 124, 16, ${p.alpha * 0.5})` : `rgba(255,255,255,${p.alpha * 0.3})`;
             ctx.beginPath();
             if(theme.includes('xbox')) ctx.rect(p.x, p.y, p.size*2, p.size*2);
             else ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -198,11 +156,12 @@
         requestAnimationFrame(animate);
     }
 
-    // --- UI & Theme Logic ---
+    // --- Theme & Filter ---
     function changeTheme(theme) {
         document.body.className = 'theme-' + theme;
         document.getElementById('ver-tag').innerText = theme === 'ps5' ? '5' : (theme === 'switch' ? 'Switch' : 'Series X');
         localStorage.setItem('retro-theme', theme);
+        playSfx('start');
         initParticles();
     }
 
@@ -210,41 +169,30 @@
         currentFilter = sys;
         document.querySelectorAll('.console-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        playSfx('nav');
         renderGames();
     }
 
-    // --- Game Logic ---
-    const systemMap = {
-        'nes': 'nes', 'sfc': 'snes', 'snes': 'snes', 'md': 'segaMD', 'gen': 'segaMD',
-        'bin': 'psx', 'chd': 'psx', 'iso': 'psx', 'gba': 'gba', 'gb': 'gb', 'gbc': 'gbc', 
-        'n64': 'n64', 'nds': 'nds', 'sms': 'segaMS', 'gg': 'segaGG', 'pce': 'pce', 'zip': 'mame'
-    };
+    // --- Core Logic ---
+    const systemMap = { 'nes':'nes', 'sfc':'snes', 'snes':'snes', 'md':'segaMD', 'bin':'psx', 'iso':'psx', 'gba':'gba', 'gb':'gb', 'gbc':'gbc', 'nds':'nds', 'zip':'mame' };
 
     async function addGames(event) {
         for (const file of event.target.files) {
             const ext = file.name.split('.').pop().toLowerCase();
             let system = systemMap[ext] || 'nes';
             if (ext === 'iso' && file.size > 500000000) system = confirm("PlayStation 2?") ? 'play' : 'psx';
-            
             const title = file.name.replace(/\.[^/.]+$/, "");
-            const coverUrl = `https://raw.githubusercontent.com/libretro-thumbnails/libretro-thumbnails/master/${getLibName(system)}/Named_Boxarts/${encodeURIComponent(title)}.png`;
+            const coverUrl = `https://raw.githubusercontent.com/libretro-thumbnails/libretro-thumbnails/master/Sony_-_PlayStation/Named_Boxarts/${encodeURIComponent(title)}.png`;
             await db.games.add({ title, system, romBlob: file, isFavorite: 0, cover: coverUrl });
         }
         renderGames();
-    }
-
-    function getLibName(sys) {
-        const map = {'psx':'Sony_-_PlayStation','nes':'Nintendo_-_Nintendo_Entertainment_System','snes':'Nintendo_-_Super_Nintendo_Entertainment_System','gba':'Nintendo_-_Game_Boy_Advance'};
-        return map[sys] || 'Sony_-_PlayStation';
     }
 
     async function renderGames() {
         const grid = document.getElementById('game-grid');
         grid.innerHTML = '';
         const games = await db.games.toArray();
-        let filtered = games;
-        if(currentFilter === 'favorite') filtered = games.filter(g => g.isFavorite);
-        else if(currentFilter !== 'all') filtered = games.filter(g => g.system === currentFilter);
+        let filtered = currentFilter === 'all' ? games : (currentFilter === 'favorite' ? games.filter(g => g.isFavorite) : games.filter(g => g.system === currentFilter));
 
         filtered.forEach(game => {
             const card = document.createElement('div');
@@ -256,9 +204,8 @@
                     <div class="text-[10px] font-bold truncate">${game.title}</div>
                 </div>
                 <button onclick="toggleFav(event, ${game.id})" class="absolute top-2 right-2">${game.isFavorite ? '⭐' : '☆'}</button>
-                <button onclick="deleteGame(event, ${game.id})" class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 text-red-500">🗑️</button>
             `;
-            card.onclick = () => startEmulator(game.id);
+            card.onclick = () => { playSfx('nav'); startEmulator(game.id); };
             grid.appendChild(card);
         });
     }
@@ -272,26 +219,23 @@
         window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/';
         window.EJS_startOnLoad = true;
         if (isMobile) window.EJS_browserMode = 'mobile';
-        window.EJS_buttons = { l: true, r: true, l2: true, r2: true, l3: true, r3: true, leftStick: true, rightStick: true, select: true, start: true };
-        
         if (game.system.includes('ps') || game.system === 'play') {
             const bios = await db.config.get('ps_bios');
             if (bios) window.EJS_biosUrl = URL.createObjectURL(bios.blob);
             window.EJS_defaultControllerType = 5; 
             document.getElementById('emulator-container').classList.add('is-psx');
         }
-
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/loader.js';
         document.body.appendChild(script);
     }
 
     // --- Helpers ---
-    function updateClock() { const now = new Date(); document.getElementById('clock').innerText = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0'); }
-    async function toggleFav(e, id) { e.stopPropagation(); const g = await db.games.get(id); await db.games.update(id, {isFavorite: g.isFavorite ? 0 : 1}); renderGames(); }
+    function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+    async function toggleFav(e, id) { e.stopPropagation(); const g = await db.games.get(id); await db.games.update(id, {isFavorite: g.isFavorite ? 0 : 1}); playSfx('nav'); renderGames(); }
     async function deleteGame(e, id) { e.stopPropagation(); if(confirm("Удалить?")) { await db.games.delete(id); renderGames(); } }
     function stopEmulator() { location.reload(); }
-    async function exportLibrary() { const g = await db.games.toArray(); const b = new Blob([JSON.stringify(g)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `retro_backup.json`; a.click(); }
+    async function exportLibrary() { const g = await db.games.toArray(); const b = new Blob([JSON.stringify(g)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `backup.json`; a.click(); }
     async function addBios(event) { if (event.target.files[0]) { await db.config.put({ name: 'ps_bios', blob: event.target.files[0] }); alert("BIOS Saved"); } }
 
     const savedTheme = localStorage.getItem('retro-theme') || 'ps5';
